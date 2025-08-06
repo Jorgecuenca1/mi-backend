@@ -1,0 +1,148 @@
+{% extends 'api/base.html' %}
+
+{% block title %}VetControl - Sistema de Vacunación Veterinaria{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section
+    style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-radius: 20px; padding: 4rem 2rem; text-align: center; margin-bottom: 3rem;">
+    <h1 style="font-size: 3rem; font-weight: bold; color: #495057; margin-bottom: 1rem;">
+        VetControl
+    </h1>
+    <p
+        style="font-size: 1.3rem; color: #6c757d; margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+        Sistema integral de gestión y control de vacunación veterinaria para mascotas
+    </p>
+    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="{% url 'reportes' %}" class="btn btn-primary">Ver Reportes</a>
+        <a href="/admin/" class="btn btn-secondary">Panel de Administración</a>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">🌟 Características Principales</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+        <div style="padding: 1.5rem; border: 1px solid #e9ecef; border-radius: 12px; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🐕</div>
+            <h3 style="color: #495057; margin-bottom: 1rem;">Gestión de Mascotas</h3>
+            <p style="color: #6c757d;">Control completo de información de mascotas, incluyendo datos del propietario,
+                tipo, raza y antecedentes vacunales.</p>
+        </div>
+
+        <div style="padding: 1.5rem; border: 1px solid #e9ecef; border-radius: 12px; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📍</div>
+            <h3 style="color: #495057; margin-bottom: 1rem;">Georreferenciación</h3>
+            <p style="color: #6c757d;">Ubicación precisa de cada mascota con coordenadas GPS para mejor seguimiento
+                territorial.</p>
+        </div>
+
+        <div style="padding: 1.5rem; border: 1px solid #e9ecef; border-radius: 12px; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+            <h3 style="color: #495057; margin-bottom: 1rem;">Reportes Detallados</h3>
+            <p style="color: #6c757d;">Estadísticas completas por municipio, zona urbana/rural y estado de vacunación.
+            </p>
+        </div>
+
+        <div style="padding: 1.5rem; border: 1px solid #e9ecef; border-radius: 12px; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📱</div>
+            <h3 style="color: #495057; margin-bottom: 1rem;">App Móvil</h3>
+            <p style="color: #6c757d;">Interfaz móvil desarrollada en Flutter para veterinarios en campo.</p>
+        </div>
+
+        <div style="padding: 1.5rem; border: 1px solid #e9ecef; border-radius: 12px; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📸</div>
+            <h3 style="color: #495057; margin-bottom: 1rem;">Registro Fotográfico</h3>
+            <p style="color: #6c757d;">Captura y almacenamiento de fotografías de las mascotas para mejor
+                identificación.</p>
+        </div>
+
+        <div style="padding: 1.5rem; border: 1px solid #e9ecef; border-radius: 12px; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🏥</div>
+            <h3 style="color: #495057; margin-bottom: 1rem;">Control Veterinario</h3>
+            <p style="color: #6c757d;">Gestión de planillas y responsables por veterinario para organización eficiente.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Statistics Overview -->
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">📈 Resumen del Sistema</h2>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-number">{{ total_planillas }}</span>
+            <div class="stat-label">Planillas Registradas</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ total_responsables }}</span>
+            <div class="stat-label">Responsables de Mascotas</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ total_mascotas }}</span>
+            <div class="stat-label">Mascotas Registradas</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ mascotas_vacunadas }}</span>
+            <div class="stat-label">Mascotas Vacunadas</div>
+        </div>
+    </div>
+</section>
+
+<!-- About Section -->
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">ℹ️ Acerca del Sistema</h2>
+    </div>
+    <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; align-items: center;">
+        <div>
+            <h3 style="color: #495057; margin-bottom: 1rem;">Tecnología Avanzada</h3>
+            <p style="color: #6c757d; margin-bottom: 1rem;">
+                VetControl está desarrollado con tecnologías modernas para garantizar eficiencia,
+                seguridad y escalabilidad en la gestión de programas de vacunación veterinaria.
+            </p>
+            <ul style="color: #6c757d; padding-left: 1.5rem;">
+                <li>Backend robusto con Django y Django REST Framework</li>
+                <li>Base de datos optimizada para consultas rápidas</li>
+                <li>API RESTful para integración con aplicaciones móviles</li>
+                <li>Interfaz administrativa completa</li>
+                <li>Sistema de autenticación y autorización</li>
+            </ul>
+        </div>
+        <div style="text-align: center; padding: 2rem;">
+            <div style="font-size: 8rem; opacity: 0.1;">🏥</div>
+            <p style="color: #6c757d; font-style: italic;">
+                "Facilitando el control veterinario territorial con tecnología de vanguardia"
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section
+    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 20px; padding: 3rem 2rem; text-align: center; margin-top: 2rem;">
+    <h2 style="font-size: 2rem; margin-bottom: 1rem;">¿Listo para optimizar tu trabajo veterinario?</h2>
+    <p style="font-size: 1.1rem; margin-bottom: 2rem; opacity: 0.9;">
+        Accede al panel de administración para gestionar planillas, responsables y mascotas
+    </p>
+    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="/admin/"
+            style="background: rgba(255,255,255,0.2); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500; transition: all 0.3s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+            Ir al Panel de Admin
+        </a>
+        <a href="{% url 'reportes' %}"
+            style="background: transparent; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500; border: 2px solid rgba(255,255,255,0.3); transition: all 0.3s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+            onmouseout="this.style.background='transparent'">
+            Ver Reportes
+        </a>
+    </div>
+</section>
+{% endblock %}

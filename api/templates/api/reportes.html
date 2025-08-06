@@ -1,0 +1,313 @@
+{% extends 'api/base.html' %}
+
+{% block title %}Reportes - VetControl{% endblock %}
+
+{% block content %}
+<!-- Header Section -->
+<section
+    style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-radius: 20px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
+    <h1 style="font-size: 2.5rem; font-weight: bold; color: #495057; margin-bottom: 1rem;">
+        📊 Reportes del Sistema
+    </h1>
+    <p style="font-size: 1.1rem; color: #6c757d;">
+        Estadísticas detalladas de vacunación por municipio y zona
+    </p>
+    <p style="font-size: 0.9rem; color: #6c757d; font-style: italic;">
+        ✅ Todas las mascotas están vacunadas • El campo "antecedente vacunal" se refiere a tarjeta de vacunación previa
+    </p>
+</section>
+
+<!-- Summary Stats -->
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">📈 Resumen General</h2>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-number">{{ total_municipios }}</span>
+            <div class="stat-label">Municipios Atendidos</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ total_planillas }}</span>
+            <div class="stat-label">Planillas Registradas</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ total_responsables }}</span>
+            <div class="stat-label">Responsables</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ total_mascotas }}</span>
+            <div class="stat-label">Mascotas Vacunadas</div>
+        </div>
+    </div>
+</section>
+
+<!-- Key Metrics -->
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">🎯 Métricas Clave</h2>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-number">{{ total_con_tarjeta }}</span>
+            <div class="stat-label">Con Tarjeta Previa ({{ porcentaje_tarjeta_previa }}%)</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ total_sin_tarjeta }}</span>
+            <div class="stat-label">Sin Tarjeta Previa</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ promedio_mascotas_responsable }}</span>
+            <div class="stat-label">Promedio Mascotas/Responsable</div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ promedio_responsables_planilla }}</span>
+            <div class="stat-label">Promedio Responsables/Planilla</div>
+        </div>
+    </div>
+</section>
+
+<!-- Reports by Municipality -->
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">🏘️ Reporte por Municipio</h2>
+        <p style="color: #6c757d; margin-top: 0.5rem;">Estadísticas detalladas por cada municipio</p>
+    </div>
+
+    {% if reportes_municipio %}
+    <div style="overflow-x: auto;">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Municipio</th>
+                    <th>Planillas</th>
+                    <th>Responsables</th>
+                    <th>Total Mascotas</th>
+                    <th>Con Tarjeta Previa</th>
+                    <th>% Tarjeta Previa</th>
+                    <th>Zona Urbana</th>
+                    <th>Zona Rural</th>
+                    <th>Perros</th>
+                    <th>Gatos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reporte in reportes_municipio %}
+                <tr>
+                    <td style="font-weight: 600; color: #495057;">{{ reporte.municipio }}</td>
+                    <td>{{ reporte.planillas }}</td>
+                    <td>{{ reporte.responsables }}</td>
+                    <td style="font-weight: 500;">{{ reporte.total_mascotas }}</td>
+                    <td style="color: #28a745; font-weight: 500;">{{ reporte.con_tarjeta_previa }}</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-weight: 500;">{{ reporte.porcentaje_tarjeta_previa }}%</span>
+                            <div
+                                style="width: 60px; height: 6px; background: #e9ecef; border-radius: 3px; overflow: hidden;">
+                                <div
+                                    style="width: {{ reporte.porcentaje_tarjeta_previa }}%; height: 100%; background: {% if reporte.porcentaje_tarjeta_previa >= 80 %}#28a745{% elif reporte.porcentaje_tarjeta_previa >= 50 %}#ffc107{% else %}#dc3545{% endif %};">
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>🏙️ {{ reporte.zona_urbana }}</td>
+                    <td>🌾 {{ reporte.zona_rural }}</td>
+                    <td>🐕 {{ reporte.perros }}</td>
+                    <td>🐱 {{ reporte.gatos }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 3rem; color: #6c757d;">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">📊</div>
+        <h3>No hay datos disponibles</h3>
+        <p>Aún no se han registrado mascotas en el sistema.</p>
+    </div>
+    {% endif %}
+</section>
+
+<!-- Top Municipalities -->
+{% if top_municipios_mascotas %}
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">🏆 Top 5 Municipios con Más Mascotas</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        {% for municipio in top_municipios_mascotas %}
+        <div style="padding: 1rem; border: 1px solid #e9ecef; border-radius: 8px; text-align: center;">
+            <h4 style="color: #495057; margin-bottom: 0.5rem;">{{ forloop.counter }}. {{ municipio.municipio }}</h4>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #667eea;">{{ municipio.total_mascotas }}</div>
+            <div style="font-size: 0.8rem; color: #6c757d;">mascotas</div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Distribution Charts -->
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">📊 Distribución de Mascotas</h2>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+        <!-- Urbano vs Rural -->
+        <div style="text-align: center; padding: 1.5rem; border: 1px solid #e9ecef; border-radius: 12px;">
+            <h4 style="color: #495057; margin-bottom: 1rem;">Distribución por Zona</h4>
+            <div style="position: relative; width: 120px; height: 120px; margin: 0 auto 1rem;">
+                <svg width="120" height="120" style="transform: rotate(-90deg);">
+                    <circle cx="60" cy="60" r="50" fill="none" stroke="#e9ecef" stroke-width="8"></circle>
+                    <circle cx="60" cy="60" r="50" fill="none" stroke="#1976d2" stroke-width="8"
+                        stroke-dasharray="{{ porcentaje_urbano|floatformat:0 }}.14 314.16" stroke-linecap="round">
+                    </circle>
+                </svg>
+                <div
+                    style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                    <div style="font-size: 1.2rem; font-weight: bold; color: #1976d2;">{{ porcentaje_urbano }}%</div>
+                    <div style="font-size: 0.7rem; color: #6c757d;">Urbano</div>
+                </div>
+            </div>
+            <div style="color: #6c757d; font-size: 0.9rem;">
+                <div>🏙️ Urbano: {{ total_urbano }} ({{ porcentaje_urbano }}%)</div>
+                <div>🌾 Rural: {{ total_rural }} ({{ porcentaje_rural }}%)</div>
+            </div>
+        </div>
+
+        <!-- Perros vs Gatos -->
+        <div style="text-align: center; padding: 1.5rem; border: 1px solid #e9ecef; border-radius: 12px;">
+            <h4 style="color: #495057; margin-bottom: 1rem;">Distribución por Tipo</h4>
+            <div style="position: relative; width: 120px; height: 120px; margin: 0 auto 1rem;">
+                <svg width="120" height="120" style="transform: rotate(-90deg);">
+                    <circle cx="60" cy="60" r="50" fill="none" stroke="#e9ecef" stroke-width="8"></circle>
+                    <circle cx="60" cy="60" r="50" fill="none" stroke="#f57c00" stroke-width="8"
+                        stroke-dasharray="{{ porcentaje_perros|floatformat:0 }}.14 314.16" stroke-linecap="round">
+                    </circle>
+                </svg>
+                <div
+                    style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                    <div style="font-size: 1.2rem; font-weight: bold; color: #f57c00;">{{ porcentaje_perros }}%</div>
+                    <div style="font-size: 0.7rem; color: #6c757d;">Perros</div>
+                </div>
+            </div>
+            <div style="color: #6c757d; font-size: 0.9rem;">
+                <div>🐕 Perros: {{ total_perros }} ({{ porcentaje_perros }}%)</div>
+                <div>🐱 Gatos: {{ total_gatos }} ({{ porcentaje_gatos }}%)</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Breed Distribution -->
+{% if razas_perros or razas_gatos %}
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">🧬 Distribución por Raza</h2>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+        {% if razas_perros %}
+        <div>
+            <h4 style="color: #495057; margin-bottom: 1rem; text-align: center;">🐕 Razas de Perros</h4>
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+                {% for raza, cantidad in razas_perros.items %}
+                <div
+                    style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e9ecef;">
+                    <span>{{ raza }}</span>
+                    <span style="font-weight: bold; color: #f57c00;">{{ cantidad }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if razas_gatos %}
+        <div>
+            <h4 style="color: #495057; margin-bottom: 1rem; text-align: center;">🐱 Razas de Gatos</h4>
+            <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+                {% for raza, cantidad in razas_gatos.items %}
+                <div
+                    style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e9ecef;">
+                    <span>{{ raza }}</span>
+                    <span style="font-weight: bold; color: #c2185b;">{{ cantidad }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Detailed Statistics -->
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">📋 Estadísticas Detalladas</h2>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+        <div
+            style="padding: 1.5rem; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-radius: 12px; text-align: center;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🏙️</div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: #1976d2;">{{ total_urbano }}</div>
+            <div style="color: #424242; font-size: 0.9rem;">Mascotas en Zona Urbana</div>
+            <div style="color: #424242; font-size: 0.8rem; margin-top: 0.3rem;">({{ porcentaje_urbano }}%)</div>
+        </div>
+
+        <div
+            style="padding: 1.5rem; background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); border-radius: 12px; text-align: center;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🌾</div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: #388e3c;">{{ total_rural }}</div>
+            <div style="color: #424242; font-size: 0.9rem;">Mascotas en Zona Rural</div>
+            <div style="color: #424242; font-size: 0.8rem; margin-top: 0.3rem;">({{ porcentaje_rural }}%)</div>
+        </div>
+
+        <div
+            style="padding: 1.5rem; background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-radius: 12px; text-align: center;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🐕</div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: #f57c00;">{{ total_perros }}</div>
+            <div style="color: #424242; font-size: 0.9rem;">Total de Perros</div>
+            <div style="color: #424242; font-size: 0.8rem; margin-top: 0.3rem;">({{ porcentaje_perros }}%)</div>
+        </div>
+
+        <div
+            style="padding: 1.5rem; background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%); border-radius: 12px; text-align: center;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🐱</div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: #c2185b;">{{ total_gatos }}</div>
+            <div style="color: #424242; font-size: 0.9rem;">Total de Gatos</div>
+            <div style="color: #424242; font-size: 0.8rem; margin-top: 0.3rem;">({{ porcentaje_gatos }}%)</div>
+        </div>
+    </div>
+</section>
+
+<!-- Actions -->
+<section style="text-align: center; margin-top: 2rem;">
+    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="{% url 'landing' %}" class="btn btn-secondary">← Volver al Inicio</a>
+        <a href="/admin/" class="btn btn-primary">Panel de Administración</a>
+        <button onclick="window.print()" class="btn btn-secondary">🖨️ Imprimir Reporte</button>
+    </div>
+</section>
+
+<style>
+    @media print {
+
+        .header,
+        .footer,
+        .nav-links,
+        button {
+            display: none !important;
+        }
+
+        .card {
+            box-shadow: none;
+            border: 1px solid #ddd;
+        }
+
+        body {
+            background: white !important;
+        }
+    }
+</style>
+{% endblock %}
