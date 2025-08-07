@@ -1,0 +1,326 @@
+{% extends 'api/base.html' %}
+
+{% block title %}Elegir Planilla - VetControl{% endblock %}
+
+{% block content %}
+<div class="planilla-selection">
+  <div class="selection-header">
+    <h1>📋 Selecciona tu Planilla</h1>
+    <p>Elige la planilla en la que vas a registrar responsables y mascotas</p>
+  </div>
+
+  {% if planillas %}
+  <div class="planillas-grid">
+    {% for planilla in planillas %}
+    <div class="planilla-card">
+      <div class="planilla-icon">
+        📄
+      </div>
+      <div class="planilla-info">
+        <h3>{{ planilla.nombre }}</h3>
+        <div class="planilla-details">
+          <div class="detail-item">
+            <span class="detail-label">🏘️ Municipio:</span>
+            <span class="detail-value">{{ planilla.municipio }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">📍 Zona:</span>
+            <span class="detail-value">{{ planilla.urbano_rural|title }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">🏠 Centro Poblado:</span>
+            <span class="detail-value">{{ planilla.centro_poblado_vereda_barrio }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">📅 Creada:</span>
+            <span class="detail-value">{{ planilla.creada|date:"d/m/Y" }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="planilla-actions">
+        <a href="{% url 'crear_responsable' planilla_id=planilla.id %}" class="btn-select-planilla">
+          <span class="btn-icon">➕</span>
+          Agregar Responsable
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="no-planillas">
+    <div class="no-planillas-icon">📭</div>
+    <h2>No tienes planillas asignadas</h2>
+    <p>Contacta al administrador para que te asigne una planilla de trabajo.</p>
+    <div class="no-planillas-actions">
+      <a href="/admin/" class="btn btn-secondary">Ir al Panel de Admin</a>
+      <a href="{% url 'landing' %}" class="btn btn-primary">Volver al Inicio</a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+  .planilla-selection {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 0;
+  }
+
+  .selection-header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .selection-header h1 {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #495057;
+    margin-bottom: 1rem;
+  }
+
+  .selection-header p {
+    font-size: 1.2rem;
+    color: #6c757d;
+    margin: 0;
+  }
+
+  .planillas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .planilla-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .planilla-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  .planilla-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    border-color: #667eea;
+  }
+
+  .planilla-icon {
+    font-size: 3rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .planilla-info h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+
+  .planilla-details {
+    margin-bottom: 2rem;
+  }
+
+  .detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f1f3f4;
+  }
+
+  .detail-item:last-child {
+    border-bottom: none;
+  }
+
+  .detail-label {
+    font-weight: 500;
+    color: #6c757d;
+    font-size: 0.9rem;
+  }
+
+  .detail-value {
+    font-weight: 600;
+    color: #495057;
+    text-align: right;
+    max-width: 60%;
+    word-wrap: break-word;
+  }
+
+  .planilla-actions {
+    text-align: center;
+  }
+
+  .btn-select-planilla {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  .btn-select-planilla:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    color: white;
+    text-decoration: none;
+  }
+
+  .btn-icon {
+    font-size: 1.2rem;
+  }
+
+  .no-planillas {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  }
+
+  .no-planillas-icon {
+    font-size: 5rem;
+    margin-bottom: 2rem;
+    opacity: 0.5;
+  }
+
+  .no-planillas h2 {
+    font-size: 2rem;
+    color: #495057;
+    margin-bottom: 1rem;
+  }
+
+  .no-planillas p {
+    font-size: 1.1rem;
+    color: #6c757d;
+    margin-bottom: 2rem;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .no-planillas-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    color: white;
+    text-decoration: none;
+  }
+
+  .btn-secondary {
+    background: #6c757d;
+    color: white;
+  }
+
+  .btn-secondary:hover {
+    background: #5a6268;
+    color: white;
+    text-decoration: none;
+  }
+
+  @media (max-width: 768px) {
+    .planillas-grid {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .planilla-card {
+      padding: 1.5rem;
+    }
+
+    .selection-header h1 {
+      font-size: 2rem;
+    }
+
+    .detail-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .detail-value {
+      text-align: left;
+      max-width: 100%;
+    }
+  }
+
+  /* Animaciones */
+  .planilla-card {
+    animation: fadeInUp 0.6s ease-out;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .planilla-card:nth-child(1) {
+    animation-delay: 0.1s;
+  }
+
+  .planilla-card:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .planilla-card:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+
+  .planilla-card:nth-child(4) {
+    animation-delay: 0.4s;
+  }
+</style>
+{% endblock %}

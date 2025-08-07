@@ -128,6 +128,17 @@
             background: #5a6268;
         }
 
+        .btn-outline {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
         /* Stats */
         .stats-grid {
             display: grid;
@@ -208,6 +219,56 @@
         .table tr:hover {
             background-color: #f8f9fa;
         }
+
+        /* Messages */
+        .messages-container {
+            margin-bottom: 2rem;
+        }
+
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            border: none;
+            font-weight: 500;
+            animation: slideInDown 0.5s ease-out;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 
@@ -220,6 +281,12 @@
                     <li><a href="{% url 'landing' %}">Inicio</a></li>
                     <li><a href="{% url 'reportes' %}">Reportes</a></li>
                     <li><a href="/admin/">Administración</a></li>
+                    {% if user.is_authenticated %}
+                    <li><a href="{% url 'elegir_planilla' %}" class="btn btn-success">Agregar Responsable</a></li>
+                    <li><a href="{% url 'logout' %}" class="btn btn-outline">Cerrar Sesión</a></li>
+                    {% else %}
+                    <li><a href="{% url 'login' %}" class="btn btn-primary">Iniciar Sesión</a></li>
+                    {% endif %}
                 </ul>
             </nav>
         </div>
@@ -227,6 +294,16 @@
 
     <main class="main-content">
         <div class="container">
+            {% if messages %}
+            <div class="messages-container">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
             {% block content %}
             {% endblock %}
         </div>

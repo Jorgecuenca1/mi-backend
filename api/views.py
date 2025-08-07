@@ -10,7 +10,49 @@ import base64
 from django.core.files.base import ContentFile
 from .models import Planilla, Mascota, Responsable
 from .serializers import PlanillaSerializer, MascotaSerializer, ResponsableSerializer
+from django.shortcuts import render, redirect, get_object_or_404
+from .forms import ResponsableForm, MascotaFormSet
+from .models import Planilla
+from django.contrib.auth.decorators import login_required
+@login_required
+def elegir_planilla(request):
+    """
+    Muestra las planillas asignadas al veterinario logueado
+    para que elija en cuál va a agregar responsables y mascotas.
+    """
+    planillas = Planilla.objects.filter(assigned_to=request.user)
+    return render(request, 'api/elegir_planilla.html', {
+        'planillas': planillas
+    })
 
+def crear_responsable_con_mascotas(request, planilla_id):
+    # 1) Obtén la planilla o 404
+    planilla = get_object_or_404(Planilla, id=planilla_id)
+
+    if request.method == 'POST':
+        form = ResponsableForm(request.POST)
+        formset = MascotaFormSet(request.POST, request.FILES)
+
+        if form.is_valid() and formset.is_valid():
+            # 2) Guarda Responsable
+            responsable = form.save(commit=False)
+            responsable.planilla = planilla
+            responsable.save()
+
+            # 3) Asocia el formset al responsable
+            formset.instance = responsable
+            formset.save()
+
+            return redirect('detalle_planilla', pk=planilla.id)  # o a donde quieras
+    else:
+        form = ResponsableForm()
+        formset = MascotaFormSet()
+
+    return render(request, 'api/responsable_form.html', {
+        'form': form,
+        'formset': formset,
+        'planilla': planilla
+    })
 
 class ResponsableViewSet(APIView):
     permission_classes = [AllowAny]
@@ -276,52 +318,11 @@ def reportes_view(request):
     total_perros = sum(stats['perros'] for stats in municipios_stats.values())
     total_gatos = sum(stats['gatos'] for stats in municipios_stats.values())
     
-    # Porcentajes generales
-    porcentaje_tarjeta_previa = round((total_con_tarjeta / total_mascotas * 100), 1) if total_mascotas > 0 else 0
-    porcentaje_urbano = round((total_urbano / total_mascotas * 100), 1) if total_mascotas > 0 else 0
-    porcentaje_rural = round((total_rural / total_mascotas * 100), 1) if total_mascotas > 0 else 0
-    porcentaje_perros = round((total_perros / total_mascotas * 100), 1) if total_mascotas > 0 else 0
-    porcentaje_gatos = round((total_gatos / total_mascotas * 100), 1) if total_mascotas > 0 else 0
-    
-    # Reportes adicionales
-    # 1. Top 5 municipios con más mascotas
-    top_municipios_mascotas = sorted(reportes_municipio, key=lambda x: x['total_mascotas'], reverse=True)[:5]
-    
-    # 2. Distribución por raza (solo perros)
-    razas_perros = {}
-    razas_gatos = {}
-    for planilla in planillas:
-        for responsable in planilla.responsables.all():
-            for mascota in responsable.mascotas.all():
-                if mascota.tipo == 'perro':
-                    raza = mascota.raza
-                    razas_perros[raza] = razas_perros.get(raza, 0) + 1
-                else:
-                    raza = mascota.raza
-                    razas_gatos[raza] = razas_gatos.get(raza, 0) + 1
-    
-    # 3. Promedio de mascotas por responsable
-    promedio_mascotas_responsable = round(total_mascotas / total_responsables, 1) if total_responsables > 0 else 0
-    
-    # 4. Promedio de responsables por planilla
-    promedio_responsables_planilla = round(total_responsables / total_planillas, 1) if total_planillas > 0 else 0
-    
-    # 5. Nuevos reportes para campos de control de vacunación
-    zonas_vacunacion = {}
-    lotes_vacuna = {}
-    for responsable in Responsable.objects.all():
-        # Contar zonas de vacunación
-        if responsable.zona != "Sin especificar":
-            zona_key = f"{responsable.zona} - {responsable.nombre_zona}"
-            zonas_vacunacion[zona_key] = zonas_vacunacion.get(zona_key, 0) + responsable.mascotas.count()
-        
-        # Contar lotes de vacuna
-        if responsable.lote_vacuna != "Sin especificar":
-            lotes_vacuna[responsable.lote_vacuna] = lotes_vacuna.get(responsable.lote_vacuna, 0) + responsable.mascotas.count()
-    
-    # Ordenar por cantidad
-    zonas_vacunacion = dict(sorted(zonas_vacunacion.items(), key=lambda x: x[1], reverse=True)[:10])
-    lotes_vacuna = dict(sorted(lotes_vacuna.items(), key=lambda x: x[1], reverse=True)[:10])
+    # Calcular porcentajes generales
+    if total_mascotas > 0:
+        porcentaje_general_tarjeta = round((total_con_tarjeta / total_mascotas) * 100, 1)
+    else:
+        porcentaje_general_tarjeta = 0
     
     context = {
         'reportes_municipio': reportes_municipio,
@@ -331,22 +332,43 @@ def reportes_view(request):
         'total_mascotas': total_mascotas,
         'total_con_tarjeta': total_con_tarjeta,
         'total_sin_tarjeta': total_sin_tarjeta,
-        'porcentaje_tarjeta_previa': porcentaje_tarjeta_previa,
         'total_urbano': total_urbano,
         'total_rural': total_rural,
-        'porcentaje_urbano': porcentaje_urbano,
-        'porcentaje_rural': porcentaje_rural,
         'total_perros': total_perros,
         'total_gatos': total_gatos,
-        'porcentaje_perros': porcentaje_perros,
-        'porcentaje_gatos': porcentaje_gatos,
-        'top_municipios_mascotas': top_municipios_mascotas,
-        'razas_perros': razas_perros,
-        'razas_gatos': razas_gatos,
-        'promedio_mascotas_responsable': promedio_mascotas_responsable,
-        'promedio_responsables_planilla': promedio_responsables_planilla,
-        'zonas_vacunacion': zonas_vacunacion,
-        'lotes_vacuna': lotes_vacuna,
+        'porcentaje_general_tarjeta': porcentaje_general_tarjeta,
     }
     
-    return render(request, 'api/reportes.html', context) 
+    return render(request, 'api/reportes.html', context)
+
+
+from django.contrib.auth import authenticate, login, logout
+from django.contrib import messages
+from django.shortcuts import redirect
+
+def login_view(request):
+    """Vista para el inicio de sesión"""
+    if request.user.is_authenticated:
+        return redirect('landing')
+    
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            login(request, user)
+            messages.success(request, f'¡Bienvenido, {user.username}!')
+            return redirect('landing')
+        else:
+            messages.error(request, 'Usuario o contraseña incorrectos.')
+    
+    return render(request, 'api/login.html')
+
+
+def logout_view(request):
+    """Vista para cerrar sesión"""
+    logout(request)
+    messages.success(request, 'Has cerrado sesión correctamente.')
+    return redirect('login') 

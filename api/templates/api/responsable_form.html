@@ -1,0 +1,682 @@
+{% extends "api/base.html" %}
+
+{% block title %}Agregar Responsable - {{ planilla.nombre }}{% endblock %}
+
+{% block content %}
+<div class="responsable-form-container">
+  <div class="form-header">
+    <div class="header-content">
+      <h1>👤 Agregar Responsable</h1>
+      <p>Planilla: <strong>{{ planilla.nombre }}</strong></p>
+      <div class="planilla-info">
+        <span class="info-badge">🏘️ {{ planilla.municipio }}</span>
+        <span class="info-badge">📍 {{ planilla.urbano_rural|title }}</span>
+        <span class="info-badge">🏠 {{ planilla.centro_poblado_vereda_barrio }}</span>
+      </div>
+    </div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" id="responsable-form" class="responsable-form">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+      {% for error in form.non_field_errors %}
+      <p>{{ error }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Sección: Datos del Responsable -->
+    <div class="form-section">
+      <div class="section-header">
+        <div class="section-icon">👤</div>
+        <h2>Datos del Responsable</h2>
+        <p>Información personal del propietario de las mascotas</p>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="{{ form.nombre.id_for_label }}">Nombre Completo *</label>
+          {{ form.nombre }}
+          {% if form.nombre.errors %}
+          <div class="error-message">{{ form.nombre.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.telefono.id_for_label }}">Teléfono *</label>
+          {{ form.telefono }}
+          {% if form.telefono.errors %}
+          <div class="error-message">{{ form.telefono.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.finca.id_for_label }}">Finca/Propiedad *</label>
+          {{ form.finca }}
+          {% if form.finca.errors %}
+          <div class="error-message">{{ form.finca.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.zona.id_for_label }}">Zona de Vacunación</label>
+          {{ form.zona }}
+          {% if form.zona.errors %}
+          <div class="error-message">{{ form.zona.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.nombre_zona.id_for_label }}">Nombre de la Zona</label>
+          {{ form.nombre_zona }}
+          {% if form.nombre_zona.errors %}
+          <div class="error-message">{{ form.nombre_zona.errors.0 }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.lote_vacuna.id_for_label }}">Lote de Vacuna</label>
+          {{ form.lote_vacuna }}
+          {% if form.lote_vacuna.errors %}
+          <div class="error-message">{{ form.lote_vacuna.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección: Mascotas -->
+    <div class="form-section">
+      <div class="section-header">
+        <div class="section-icon">🐕</div>
+        <h2>Mascotas</h2>
+        <p>Registra las mascotas del responsable</p>
+      </div>
+
+      {{ formset.management_form }}
+      <div id="mascotas-container">
+        {% for subform in formset %}
+        <div class="mascota-card" data-index="{{ forloop.counter0 }}">
+          <div class="mascota-header">
+            <h3>Mascota {{ forloop.counter }}</h3>
+            {% if formset.can_delete %}
+            <button type="button" class="btn-remove-mascota" onclick="removeMascota(this)">
+              🗑️ Eliminar
+            </button>
+            {% endif %}
+          </div>
+
+          <div class="mascota-content">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="{{ subform.nombre.id_for_label }}">Nombre *</label>
+                {{ subform.nombre }}
+                {% if subform.nombre.errors %}
+                <div class="error-message">{{ subform.nombre.errors.0 }}</div>
+                {% endif %}
+              </div>
+
+              <div class="form-group">
+                <label for="{{ subform.tipo.id_for_label }}">Tipo *</label>
+                {{ subform.tipo }}
+                {% if subform.tipo.errors %}
+                <div class="error-message">{{ subform.tipo.errors.0 }}</div>
+                {% endif %}
+              </div>
+
+              <div class="form-group">
+                <label for="{{ subform.raza.id_for_label }}">Raza *</label>
+                {{ subform.raza }}
+                {% if subform.raza.errors %}
+                <div class="error-message">{{ subform.raza.errors.0 }}</div>
+                {% endif %}
+              </div>
+
+              <div class="form-group">
+                <label for="{{ subform.color.id_for_label }}">Color</label>
+                {{ subform.color }}
+                {% if subform.color.errors %}
+                <div class="error-message">{{ subform.color.errors.0 }}</div>
+                {% endif %}
+              </div>
+
+              <div class="form-group">
+                <label for="{{ subform.antecedente_vacunal.id_for_label }}">Antecedente Vacunal</label>
+                <div class="checkbox-wrapper">
+                  {{ subform.antecedente_vacunal }}
+                  <span class="checkmark"></span>
+                  <span class="checkbox-label">¿Tiene antecedente vacunal?</span>
+                </div>
+                {% if subform.antecedente_vacunal.errors %}
+                <div class="error-message">{{ subform.antecedente_vacunal.errors.0 }}</div>
+                {% endif %}
+              </div>
+
+              <div class="form-group">
+                <label for="{{ subform.latitud.id_for_label }}">Latitud</label>
+                {{ subform.latitud }}
+                {% if subform.latitud.errors %}
+                <div class="error-message">{{ subform.latitud.errors.0 }}</div>
+                {% endif %}
+              </div>
+
+              <div class="form-group">
+                <label for="{{ subform.longitud.id_for_label }}">Longitud</label>
+                {{ subform.longitud }}
+                {% if subform.longitud.errors %}
+                <div class="error-message">{{ subform.longitud.errors.0 }}</div>
+                {% endif %}
+              </div>
+
+              <div class="form-group full-width">
+                <label for="{{ subform.foto.id_for_label }}">Foto de la Mascota</label>
+                <div class="file-upload-wrapper">
+                  {{ subform.foto }}
+                  <div class="file-upload-placeholder">
+                    <span class="upload-icon">📸</span>
+                    <span>Haz clic para seleccionar una foto</span>
+                  </div>
+                </div>
+                {% if subform.foto.errors %}
+                <div class="error-message">{{ subform.foto.errors.0 }}</div>
+                {% endif %}
+              </div>
+            </div>
+
+            {% if formset.can_delete %}
+            <div class="delete-checkbox">
+              {{ subform.DELETE }}
+              <label for="{{ subform.DELETE.id_for_label }}">
+                Marcar para eliminar esta mascota
+              </label>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="add-mascota-section">
+        <button type="button" id="add-mascota-btn" class="btn-add-mascota">
+          <span class="btn-icon">➕</span>
+          Agregar Otra Mascota
+        </button>
+      </div>
+    </div>
+
+    <!-- Botones de Acción -->
+    <div class="form-actions">
+      <a href="{% url 'elegir_planilla' %}" class="btn btn-secondary">
+        <span class="btn-icon">⬅️</span>
+        Cancelar
+      </a>
+      <button type="submit" class="btn btn-primary">
+        <span class="btn-icon">💾</span>
+        Guardar Responsable y Mascotas
+      </button>
+    </div>
+  </form>
+</div>
+
+<style>
+  .responsable-form-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 0;
+  }
+
+  .form-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+
+  .header-content h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+  }
+
+  .header-content p {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    opacity: 0.9;
+  }
+
+  .planilla-info {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .info-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .form-section {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f1f3f4;
+  }
+
+  .section-icon {
+    font-size: 2rem;
+  }
+
+  .section-header h2 {
+    font-size: 1.8rem;
+    color: #495057;
+    margin: 0;
+  }
+
+  .section-header p {
+    color: #6c757d;
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .form-group.full-width {
+    grid-column: 1 / -1;
+  }
+
+  .form-group label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 12px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: all 0.3s;
+    background: #f8f9fa;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+
+  .error-message {
+    color: #dc3545;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+  }
+
+  .alert {
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+    border: none;
+  }
+
+  .alert-danger {
+    background: #f8d7da;
+    color: #721c24;
+    border-left: 4px solid #dc3545;
+  }
+
+  .mascota-card {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s;
+  }
+
+  .mascota-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.1);
+  }
+
+  .mascota-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #dee2e6;
+  }
+
+  .mascota-header h3 {
+    font-size: 1.3rem;
+    color: #495057;
+    margin: 0;
+  }
+
+  .btn-remove-mascota {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .btn-remove-mascota:hover {
+    background: #c82333;
+    transform: translateY(-1px);
+  }
+
+  .checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+
+  .checkbox-wrapper input[type="checkbox"] {
+    display: none;
+  }
+
+  .checkmark {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e9ecef;
+    border-radius: 4px;
+    position: relative;
+    transition: all 0.3s;
+  }
+
+  .checkbox-wrapper input[type="checkbox"]:checked+.checkmark {
+    background: #667eea;
+    border-color: #667eea;
+  }
+
+  .checkbox-wrapper input[type="checkbox"]:checked+.checkmark::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+  }
+
+  .checkbox-label {
+    font-weight: 500;
+    color: #495057;
+  }
+
+  .file-upload-wrapper {
+    position: relative;
+    cursor: pointer;
+  }
+
+  .file-upload-wrapper input[type="file"] {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+  }
+
+  .file-upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 2rem;
+    border: 2px dashed #dee2e6;
+    border-radius: 10px;
+    background: #f8f9fa;
+    transition: all 0.3s;
+  }
+
+  .file-upload-wrapper:hover .file-upload-placeholder {
+    border-color: #667eea;
+    background: #f0f2ff;
+  }
+
+  .upload-icon {
+    font-size: 2rem;
+  }
+
+  .delete-checkbox {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #fff3cd;
+    border-radius: 8px;
+    border-left: 4px solid #ffc107;
+  }
+
+  .delete-checkbox label {
+    color: #856404;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .add-mascota-section {
+    text-align: center;
+    margin-top: 2rem;
+  }
+
+  .btn-add-mascota {
+    background: transparent;
+    border: 2px dashed #6c757d;
+    color: #6c757d;
+    padding: 1rem 2rem;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-add-mascota:hover {
+    border-color: #667eea;
+    color: #667eea;
+    background: #f0f2ff;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 3rem;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    color: white;
+    text-decoration: none;
+  }
+
+  .btn-secondary {
+    background: #6c757d;
+    color: white;
+  }
+
+  .btn-secondary:hover {
+    background: #5a6268;
+    color: white;
+    text-decoration: none;
+  }
+
+  .btn-icon {
+    font-size: 1.2rem;
+  }
+
+  @media (max-width: 768px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .form-section {
+      padding: 1.5rem;
+    }
+
+    .header-content h1 {
+      font-size: 2rem;
+    }
+
+    .planilla-info {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .form-actions {
+      flex-direction: column;
+    }
+
+    .mascota-header {
+      flex-direction: column;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+  }
+
+  /* Animaciones */
+  .mascota-card {
+    animation: slideIn 0.5s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const mascotasContainer = document.getElementById('mascotas-container');
+    const addMascotaBtn = document.getElementById('add-mascota-btn');
+    const mascotaCards = document.querySelectorAll('.mascota-card');
+
+    // Ocultar todas las mascotas excepto la primera
+    mascotaCards.forEach((card, index) => {
+      if (index > 0) {
+        card.style.display = 'none';
+      }
+    });
+
+    let visibleMascotas = 1;
+    const totalMascotas = mascotaCards.length;
+
+    addMascotaBtn.addEventListener('click', function () {
+      if (visibleMascotas < totalMascotas) {
+        mascotaCards[visibleMascotas].style.display = 'block';
+        visibleMascotas++;
+
+        if (visibleMascotas >= totalMascotas) {
+          addMascotaBtn.style.display = 'none';
+        }
+      }
+    });
+  });
+
+  function removeMascota(button) {
+    const mascotaCard = button.closest('.mascota-card');
+    const deleteCheckbox = mascotaCard.querySelector('input[name*="DELETE"]');
+
+    if (deleteCheckbox) {
+      deleteCheckbox.checked = true;
+      mascotaCard.style.opacity = '0.5';
+      mascotaCard.style.pointerEvents = 'none';
+      button.textContent = '🗑️ Eliminada';
+      button.disabled = true;
+    }
+  }
+
+  // Mejorar la experiencia de carga de archivos
+  document.addEventListener('DOMContentLoaded', function () {
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+
+    fileInputs.forEach(input => {
+      input.addEventListener('change', function () {
+        const placeholder = this.parentElement.querySelector('.file-upload-placeholder');
+        if (this.files.length > 0) {
+          placeholder.innerHTML = `
+                    <span class="upload-icon">✅</span>
+                    <span>Archivo seleccionado: ${this.files[0].name}</span>
+                `;
+          placeholder.style.borderColor = '#28a745';
+          placeholder.style.background = '#d4edda';
+        } else {
+          placeholder.innerHTML = `
+                    <span class="upload-icon">📸</span>
+                    <span>Haz clic para seleccionar una foto</span>
+                `;
+          placeholder.style.borderColor = '#dee2e6';
+          placeholder.style.background = '#f8f9fa';
+        }
+      });
+    });
+  });
+</script>
+{% endblock %}

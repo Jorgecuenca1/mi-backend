@@ -4,12 +4,16 @@ from rest_framework.authtoken.views import obtain_auth_token
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.conf import settings
 from django.conf.urls.static import static
-from api.views import landing_page, reportes_view
+from api.views import landing_page, reportes_view, login_view, logout_view
 
 urlpatterns = [
     # Landing page en la raíz
     path('', landing_page, name='landing'),
     path('reportes/', reportes_view, name='reportes'),
+    
+    # Autenticación
+    path('login/', login_view, name='login'),
+    path('logout/', logout_view, name='logout'),
     
     # Admin y APIs
     path('admin/', admin.site.urls),
