@@ -18,24 +18,7 @@
       </div>
       <div class="planilla-info">
         <h3>{{ planilla.nombre }}</h3>
-        <div class="planilla-details">
-          <div class="detail-item">
-            <span class="detail-label">🏘️ Municipio:</span>
-            <span class="detail-value">{{ planilla.municipio }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">📍 Zona:</span>
-            <span class="detail-value">{{ planilla.urbano_rural|title }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">🏠 Centro Poblado:</span>
-            <span class="detail-value">{{ planilla.centro_poblado_vereda_barrio }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">📅 Creada:</span>
-            <span class="detail-value">{{ planilla.creada|date:"d/m/Y" }}</span>
-          </div>
-        </div>
+
       </div>
       <div class="planilla-actions">
         <a href="{% url 'crear_responsable' planilla_id=planilla.id %}" class="btn-select-planilla">
