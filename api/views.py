@@ -39,6 +39,9 @@ class ResponsableViewSet(APIView):
             'nombre': request.data.get('nombre'),
             'telefono': request.data.get('telefono'),
             'finca': request.data.get('finca'),
+            'zona': request.data.get('zona', 'Sin especificar'),
+            'nombre_zona': request.data.get('nombre_zona', 'Sin especificar'),
+            'lote_vacuna': request.data.get('lote_vacuna', 'Sin especificar'),
             'planilla': planilla.id
         }
         
@@ -303,6 +306,23 @@ def reportes_view(request):
     # 4. Promedio de responsables por planilla
     promedio_responsables_planilla = round(total_responsables / total_planillas, 1) if total_planillas > 0 else 0
     
+    # 5. Nuevos reportes para campos de control de vacunación
+    zonas_vacunacion = {}
+    lotes_vacuna = {}
+    for responsable in Responsable.objects.all():
+        # Contar zonas de vacunación
+        if responsable.zona != "Sin especificar":
+            zona_key = f"{responsable.zona} - {responsable.nombre_zona}"
+            zonas_vacunacion[zona_key] = zonas_vacunacion.get(zona_key, 0) + responsable.mascotas.count()
+        
+        # Contar lotes de vacuna
+        if responsable.lote_vacuna != "Sin especificar":
+            lotes_vacuna[responsable.lote_vacuna] = lotes_vacuna.get(responsable.lote_vacuna, 0) + responsable.mascotas.count()
+    
+    # Ordenar por cantidad
+    zonas_vacunacion = dict(sorted(zonas_vacunacion.items(), key=lambda x: x[1], reverse=True)[:10])
+    lotes_vacuna = dict(sorted(lotes_vacuna.items(), key=lambda x: x[1], reverse=True)[:10])
+    
     context = {
         'reportes_municipio': reportes_municipio,
         'total_municipios': total_municipios,
@@ -325,6 +345,8 @@ def reportes_view(request):
         'razas_gatos': razas_gatos,
         'promedio_mascotas_responsable': promedio_mascotas_responsable,
         'promedio_responsables_planilla': promedio_responsables_planilla,
+        'zonas_vacunacion': zonas_vacunacion,
+        'lotes_vacuna': lotes_vacuna,
     }
     
     return render(request, 'api/reportes.html', context) 

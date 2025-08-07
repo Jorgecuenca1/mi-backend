@@ -50,6 +50,12 @@ class Responsable(models.Model):
     telefono = models.CharField(max_length=20)
     finca = models.CharField(max_length=100)
     planilla = models.ForeignKey(Planilla, on_delete=models.CASCADE, related_name='responsables')
+    
+    # Nuevos campos para control de vacunación
+    zona = models.CharField(max_length=100, default="Sin especificar", help_text="Zona específica de vacunación")
+    nombre_zona = models.CharField(max_length=150, default="Sin especificar", help_text="Nombre descriptivo de la zona")
+    lote_vacuna = models.CharField(max_length=50, default="Sin especificar", help_text="Lote de la vacuna utilizada")
+    
     creado = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -240,6 +240,54 @@
 </section>
 {% endif %}
 
+<!-- Vaccination Control -->
+{% if zonas_vacunacion or lotes_vacuna %}
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">💉 Control de Vacunación</h2>
+        <p style="color: #6c757d; margin-top: 0.5rem;">Distribución por zonas de vacunación y lotes de vacuna</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 2rem;">
+        {% if zonas_vacunacion %}
+        <div>
+            <h4 style="color: #495057; margin-bottom: 1rem; text-align: center;">🗺️ Top 10 Zonas de Vacunación</h4>
+            <div
+                style="background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); padding: 1rem; border-radius: 8px;">
+                {% for zona, cantidad in zonas_vacunacion.items %}
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0; border-bottom: 1px solid rgba(255,255,255,0.5);">
+                    <span style="font-size: 0.9rem; color: #2e7d32;">{{ zona }}</span>
+                    <span
+                        style="font-weight: bold; color: #1b5e20; background: rgba(255,255,255,0.7); padding: 0.2rem 0.5rem; border-radius: 4px;">{{
+                        cantidad }} mascotas</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if lotes_vacuna %}
+        <div>
+            <h4 style="color: #495057; margin-bottom: 1rem; text-align: center;">🧪 Top 10 Lotes de Vacuna</h4>
+            <div
+                style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); padding: 1rem; border-radius: 8px;">
+                {% for lote, cantidad in lotes_vacuna.items %}
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0; border-bottom: 1px solid rgba(255,255,255,0.5);">
+                    <span style="font-size: 0.9rem; color: #1565c0; font-family: monospace;">{{ lote }}</span>
+                    <span
+                        style="font-weight: bold; color: #0d47a1; background: rgba(255,255,255,0.7); padding: 0.2rem 0.5rem; border-radius: 4px;">{{
+                        cantidad }} mascotas</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
 <!-- Detailed Statistics -->
 <section class="card">
     <div class="card-header">

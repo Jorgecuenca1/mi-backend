@@ -4,7 +4,7 @@ from .models import Planilla, Mascota, Responsable
 class ResponsableSerializer(serializers.ModelSerializer):
     class Meta:
         model = Responsable
-        fields = ['id', 'nombre', 'telefono', 'finca', 'planilla', 'creado']
+        fields = ['id', 'nombre', 'telefono', 'finca', 'planilla', 'zona', 'nombre_zona', 'lote_vacuna', 'creado']
 
 class MascotaSerializer(serializers.ModelSerializer):
     latitud = serializers.DecimalField(max_digits=15, decimal_places=10, coerce_to_string=False)

@@ -20,10 +20,25 @@ class PlanillaAdmin(admin.ModelAdmin):
 @admin.register(Responsable)
 class ResponsableAdmin(admin.ModelAdmin):
     """Admin para responsables de mascotas."""
-    list_display = ('id', 'nombre', 'telefono', 'finca', 'planilla', 'creado')
-    list_filter = ('planilla', 'creado')
-    search_fields = ('nombre', 'telefono', 'finca')
+    list_display = ('id', 'nombre', 'telefono', 'finca', 'planilla', 'zona', 'nombre_zona', 'lote_vacuna', 'creado')
+    list_filter = ('planilla', 'zona', 'lote_vacuna', 'creado')
+    search_fields = ('nombre', 'telefono', 'finca', 'zona', 'nombre_zona', 'lote_vacuna')
     ordering = ('-creado',)
+    
+    fieldsets = (
+        ('Información Personal', {
+            'fields': ('nombre', 'telefono', 'finca', 'planilla')
+        }),
+        ('Control de Vacunación', {
+            'fields': ('zona', 'nombre_zona', 'lote_vacuna'),
+            'classes': ('collapse',)
+        }),
+        ('Información del Sistema', {
+            'fields': ('creado',),
+            'classes': ('collapse',)
+        }),
+    )
+    readonly_fields = ('creado',)
 
 @admin.register(Mascota)
 class MascotaAdmin(admin.ModelAdmin):
