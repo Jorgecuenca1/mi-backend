@@ -4,3 +4,4 @@ django==4.2.21
 sqlparse==0.5.3
 typing-extensions==4.13.2
 pillow
+corsheaders
