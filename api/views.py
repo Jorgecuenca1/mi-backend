@@ -195,10 +195,18 @@ class MascotaViewSet(APIView):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def mis_planillas(request):
-    # Ahora devuelve **todas** las planillas, sin user ni login
+    """Lista planillas filtradas por el usuario.
+
+    Reglas:
+    - Si viene ?usuario=<username>, filtra por ese username (útil para apps móviles).
+    - En otro caso, filtra por el usuario autenticado (request.user).
+    """
+    username = request.query_params.get('usuario') or request.user.username
     qs = Planilla.objects.all()
+    if username:
+        qs = qs.filter(assigned_to__username=username)
     return Response(PlanillaSerializer(qs, many=True).data)
 
 

@@ -16,7 +16,29 @@ class MascotaSerializer(serializers.ModelSerializer):
 
 class PlanillaSerializer(serializers.ModelSerializer):
     responsables = ResponsableSerializer(many=True, read_only=True)
-    
+    # Campos extra para compatibilidad con app móvil
+    usuario = serializers.SerializerMethodField()
+    asignadoA = serializers.SerializerMethodField()
+    asignado_a = serializers.SerializerMethodField()
+    municipio = serializers.CharField()
+    urbano_rural = serializers.CharField()
+    centro_poblado_vereda_barrio = serializers.CharField()
+
     class Meta:
         model = Planilla
-        fields = ['id', 'nombre', 'creada', 'responsables']
+        fields = [
+            'id', 'nombre', 'creada',
+            'municipio', 'urbano_rural', 'centro_poblado_vereda_barrio',
+            'responsables',
+            # alias/compat
+            'usuario', 'asignadoA', 'asignado_a',
+        ]
+
+    def get_usuario(self, obj):
+        return getattr(obj.assigned_to, 'username', None)
+
+    def get_asignadoA(self, obj):
+        return getattr(obj.assigned_to, 'username', None)
+
+    def get_asignado_a(self, obj):
+        return getattr(obj.assigned_to, 'username', None)
