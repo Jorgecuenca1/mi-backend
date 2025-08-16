@@ -62,6 +62,24 @@ class Planilla(models.Model):
         blank=True,
         help_text='Técnico asignado para revisar la planilla'
     )
+    
+    # NUEVOS CAMPOS: Múltiples vacunadores y técnicos
+    vacunadores_adicionales = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='planillas_como_vacunador_adicional',
+        blank=True,
+        limit_choices_to={'tipo_usuario': 'vacunador'},
+        help_text='Vacunadores adicionales asignados a esta planilla'
+    )
+    
+    tecnicos_adicionales = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name='planillas_como_tecnico_adicional',
+        blank=True,
+        limit_choices_to={'tipo_usuario': 'tecnico'},
+        help_text='Técnicos adicionales asignados para revisar esta planilla'
+    )
+    
     municipio = models.CharField(max_length=100, default="Sin especificar", help_text="Nombre del municipio")
     urbano_rural = models.CharField(max_length=10, choices=TIPO_ZONA_CHOICES, default="urbano", help_text="Tipo de zona: urbano o rural")
     centro_poblado_vereda_barrio = models.CharField(max_length=100, default="Sin especificar", help_text="Centro poblado, vereda o barrio")

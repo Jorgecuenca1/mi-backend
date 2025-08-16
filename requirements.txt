@@ -1,5 +1,4 @@
 asgiref
-backports.zoneinfo
 django
 django-cors-headers
 djangorestframework

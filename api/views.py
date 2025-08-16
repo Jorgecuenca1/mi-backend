@@ -202,11 +202,18 @@ def mis_planillas(request):
     Reglas:
     - Si viene ?usuario=<username>, filtra por ese username (útil para apps móviles).
     - En otro caso, filtra por el usuario autenticado (request.user).
+    - Incluye planillas donde el usuario es asignado principal O adicional.
     """
     username = request.query_params.get('usuario') or request.user.username
     qs = Planilla.objects.all()
     if username:
-        qs = qs.filter(assigned_to__username=username)
+        # Filtrar por asignaciones principales Y adicionales
+        qs = qs.filter(
+            Q(assigned_to__username=username) |  # Vacunador principal (compatibilidad app móvil)
+            Q(vacunadores_adicionales__username=username) |  # Vacunadores adicionales
+            Q(tecnico_asignado__username=username) |  # Técnico principal
+            Q(tecnicos_adicionales__username=username)  # Técnicos adicionales
+        ).distinct()
     return Response(PlanillaSerializer(qs, many=True).data)
 
 
@@ -391,10 +398,21 @@ def dashboard_vacunador(request):
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('login')
     
-    # Solo planillas creadas por el vacunador
-    planillas = Planilla.objects.filter(assigned_to=request.user)
-    responsables = Responsable.objects.filter(planilla__assigned_to=request.user)
-    mascotas = Mascota.objects.filter(responsable__planilla__assigned_to=request.user)
+    # Planillas donde el usuario es vacunador principal O adicional
+    planillas = Planilla.objects.filter(
+        Q(assigned_to=request.user) |  # Vacunador principal
+        Q(vacunadores_adicionales=request.user)  # Vacunador adicional
+    ).distinct()
+    
+    responsables = Responsable.objects.filter(
+        Q(planilla__assigned_to=request.user) |
+        Q(planilla__vacunadores_adicionales=request.user)
+    ).distinct()
+    
+    mascotas = Mascota.objects.filter(
+        Q(responsable__planilla__assigned_to=request.user) |
+        Q(responsable__planilla__vacunadores_adicionales=request.user)
+    ).distinct()
     
     context = {
         'user_type': 'Vacunador',
@@ -415,10 +433,21 @@ def dashboard_tecnico(request):
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('login')
     
-    # Solo planillas asignadas al técnico para revisar
-    planillas = Planilla.objects.filter(tecnico_asignado=request.user)
-    responsables = Responsable.objects.filter(planilla__tecnico_asignado=request.user)
-    mascotas = Mascota.objects.filter(responsable__planilla__tecnico_asignado=request.user)
+    # Planillas donde el usuario es técnico principal O adicional
+    planillas = Planilla.objects.filter(
+        Q(tecnico_asignado=request.user) |  # Técnico principal
+        Q(tecnicos_adicionales=request.user)  # Técnico adicional
+    ).distinct()
+    
+    responsables = Responsable.objects.filter(
+        Q(planilla__tecnico_asignado=request.user) |
+        Q(planilla__tecnicos_adicionales=request.user)
+    ).distinct()
+    
+    mascotas = Mascota.objects.filter(
+        Q(responsable__planilla__tecnico_asignado=request.user) |
+        Q(responsable__planilla__tecnicos_adicionales=request.user)
+    ).distinct()
     
     context = {
         'user_type': 'Técnico',
