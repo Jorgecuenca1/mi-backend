@@ -7,6 +7,23 @@ from django.db import models
 class Veterinario(AbstractUser):
     """Usuario personalizado para veterinarios,
        con related_name únicos en los M2M heredados."""
+    
+    TIPO_USUARIO_CHOICES = [
+        ('administrador', 'Administrador'),
+        ('vacunador', 'Vacunador'),
+        ('tecnico', 'Técnico'),
+    ]
+    
+    tipo_usuario = models.CharField(
+        max_length=15,
+        choices=TIPO_USUARIO_CHOICES,
+        default='vacunador',
+        help_text='Tipo de usuario: administrador, vacunador o técnico',
+        null=True,
+        blank=True
+
+    )
+    
     groups = models.ManyToManyField(
         Group,
         verbose_name='groups',
@@ -34,7 +51,16 @@ class Planilla(models.Model):
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='planillas'
+        related_name='planillas',
+        help_text='Vacunador que creó la planilla'
+    )
+    tecnico_asignado = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='planillas_asignadas',
+        null=True,
+        blank=True,
+        help_text='Técnico asignado para revisar la planilla'
     )
     municipio = models.CharField(max_length=100, default="Sin especificar", help_text="Nombre del municipio")
     urbano_rural = models.CharField(max_length=10, choices=TIPO_ZONA_CHOICES, default="urbano", help_text="Tipo de zona: urbano o rural")

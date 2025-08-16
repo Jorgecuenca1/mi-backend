@@ -281,6 +281,7 @@
                     <li><a href="{% url 'landing' %}">Inicio</a></li>
                     <li><a href="{% url 'reportes' %}">Reportes</a></li>
                     {% if user.is_authenticated %}
+                    <li><a href="{% url 'dashboard_principal' %}" class="btn btn-primary">Dashboard</a></li>
                     <li><a href="{% url 'elegir_planilla' %}" class="btn btn-success">Agregar Responsable</a></li>
                     <li><a href="{% url 'logout' %}" class="btn btn-outline">Cerrar Sesión</a></li>
                     {% else %}

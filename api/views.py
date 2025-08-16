@@ -357,7 +357,7 @@ from django.shortcuts import redirect
 def login_view(request):
     """Vista para el inicio de sesión"""
     if request.user.is_authenticated:
-        return redirect('landing')
+        return redirect('dashboard_principal')
     
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -368,7 +368,7 @@ def login_view(request):
         if user is not None:
             login(request, user)
             messages.success(request, f'¡Bienvenido, {user.username}!')
-            return redirect('landing')
+            return redirect('dashboard_principal')
         else:
             messages.error(request, 'Usuario o contraseña incorrectos.')
     
@@ -379,4 +379,92 @@ def logout_view(request):
     """Vista para cerrar sesión"""
     logout(request)
     messages.success(request, 'Has cerrado sesión correctamente.')
-    return redirect('login') 
+    return redirect('login')
+
+
+# ========== NUEVAS VISTAS CON PERMISOS POR TIPO DE USUARIO ==========
+
+@login_required
+def dashboard_vacunador(request):
+    """Dashboard para vacunadores - Solo ven sus propias planillas, responsables y mascotas"""
+    if request.user.tipo_usuario != 'vacunador':
+        messages.error(request, 'No tienes permisos para acceder a esta sección.')
+        return redirect('login')
+    
+    # Solo planillas creadas por el vacunador
+    planillas = Planilla.objects.filter(assigned_to=request.user)
+    responsables = Responsable.objects.filter(planilla__assigned_to=request.user)
+    mascotas = Mascota.objects.filter(responsable__planilla__assigned_to=request.user)
+    
+    context = {
+        'user_type': 'Vacunador',
+        'planillas': planillas,
+        'total_planillas': planillas.count(),
+        'total_responsables': responsables.count(),
+        'total_mascotas': mascotas.count(),
+        'mascotas_con_tarjeta': mascotas.filter(antecedente_vacunal=True).count(),
+    }
+    
+    return render(request, 'api/dashboard_usuario.html', context)
+
+
+@login_required
+def dashboard_tecnico(request):
+    """Dashboard para técnicos - Solo ven planillas asignadas para revisar"""
+    if request.user.tipo_usuario != 'tecnico':
+        messages.error(request, 'No tienes permisos para acceder a esta sección.')
+        return redirect('login')
+    
+    # Solo planillas asignadas al técnico para revisar
+    planillas = Planilla.objects.filter(tecnico_asignado=request.user)
+    responsables = Responsable.objects.filter(planilla__tecnico_asignado=request.user)
+    mascotas = Mascota.objects.filter(responsable__planilla__tecnico_asignado=request.user)
+    
+    context = {
+        'user_type': 'Técnico',
+        'planillas': planillas,
+        'total_planillas': planillas.count(),
+        'total_responsables': responsables.count(),
+        'total_mascotas': mascotas.count(),
+        'mascotas_con_tarjeta': mascotas.filter(antecedente_vacunal=True).count(),
+    }
+    
+    return render(request, 'api/dashboard_usuario.html', context)
+
+
+@login_required
+def dashboard_administrador(request):
+    """Dashboard para administradores - Ven todo"""
+    if request.user.tipo_usuario != 'administrador':
+        messages.error(request, 'No tienes permisos para acceder a esta sección.')
+        return redirect('login')
+    
+    # Administradores ven todo
+    planillas = Planilla.objects.all()
+    responsables = Responsable.objects.all()
+    mascotas = Mascota.objects.all()
+    
+    context = {
+        'user_type': 'Administrador',
+        'planillas': planillas,
+        'total_planillas': planillas.count(),
+        'total_responsables': responsables.count(),
+        'total_mascotas': mascotas.count(),
+        'mascotas_con_tarjeta': mascotas.filter(antecedente_vacunal=True).count(),
+    }
+    
+    return render(request, 'api/dashboard_usuario.html', context)
+
+
+@login_required
+def dashboard_principal(request):
+    """Vista principal que redirige según el tipo de usuario"""
+    if request.user.tipo_usuario == 'administrador':
+        return redirect('dashboard_administrador')
+    elif request.user.tipo_usuario == 'vacunador':
+        return redirect('dashboard_vacunador')
+    elif request.user.tipo_usuario == 'tecnico':
+        return redirect('dashboard_tecnico')
+    else:
+        messages.error(request, 'Tipo de usuario no válido.')
+        return redirect('login') 

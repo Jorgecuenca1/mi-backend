@@ -18,6 +18,12 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     
+    # Dashboards por tipo de usuario
+    path('dashboard/', views.dashboard_principal, name='dashboard_principal'),
+    path('dashboard/administrador/', views.dashboard_administrador, name='dashboard_administrador'),
+    path('dashboard/vacunador/', views.dashboard_vacunador, name='dashboard_vacunador'),
+    path('dashboard/tecnico/', views.dashboard_tecnico, name='dashboard_tecnico'),
+    
     # Vistas de planillas y responsables
     path('responsables/seleccionar/', views.elegir_planilla, name='elegir_planilla'),
     path('planillas/<int:planilla_id>/responsable/nuevo/',
