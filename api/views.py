@@ -8,11 +8,10 @@ from django.db.models import Count, Q
 import json
 import base64
 from django.core.files.base import ContentFile
-from .models import Planilla, Mascota, Responsable
+from .models import Planilla, Mascota, Responsable, Veterinario
 from .serializers import PlanillaSerializer, MascotaSerializer, ResponsableSerializer
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import ResponsableForm, MascotaFormSet
-from .models import Planilla
 from django.contrib.auth.decorators import login_required
 @login_required
 def elegir_planilla(request):
@@ -525,6 +524,21 @@ def dashboard_administrador(request):
     responsables = Responsable.objects.all()
     mascotas = Mascota.objects.all()
     
+    # Obtener todos los usuarios por tipo con sus relaciones
+    vacunadores = Veterinario.objects.filter(tipo_usuario='vacunador').prefetch_related(
+        'planillas',  # Planillas como vacunador principal
+        'planillas_como_vacunador_adicional',  # Planillas como vacunador adicional
+        'responsables_creados',
+        'mascotas_creadas'
+    ).order_by('username')
+    
+    tecnicos = Veterinario.objects.filter(tipo_usuario='tecnico').prefetch_related(
+        'planillas_asignadas',  # Planillas como técnico principal
+        'planillas_como_tecnico_adicional'  # Planillas como técnico adicional
+    ).order_by('username')
+    
+    administradores = Veterinario.objects.filter(tipo_usuario='administrador').order_by('username')
+    
     context = {
         'user_type': 'Administrador',
         'planillas': planillas,
@@ -532,6 +546,12 @@ def dashboard_administrador(request):
         'total_responsables': responsables.count(),
         'total_mascotas': mascotas.count(),
         'mascotas_con_tarjeta': mascotas.filter(antecedente_vacunal=True).count(),
+        'vacunadores': vacunadores,
+        'tecnicos': tecnicos,
+        'administradores': administradores,
+        'total_vacunadores': vacunadores.count(),
+        'total_tecnicos': tecnicos.count(),
+        'total_administradores': administradores.count(),
     }
     
     return render(request, 'api/dashboard_usuario.html', context)

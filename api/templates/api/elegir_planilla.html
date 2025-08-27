@@ -1,12 +1,12 @@
 {% extends 'api/base.html' %}
 
-{% block title %}Elegir Planilla - VetControl{% endblock %}
+{% block title %}Elegir Municipio - VetControl{% endblock %}
 
 {% block content %}
 <div class="planilla-selection">
   <div class="selection-header">
-    <h1>📋 Selecciona tu Planilla</h1>
-    <p>Elige la planilla en la que vas a registrar responsables y mascotas</p>
+    <h1>🏢 Selecciona tu Municipio</h1>
+    <p>Elige el municipio en el que vas a registrar responsables y mascotas</p>
   </div>
 
   {% if planillas %}
@@ -32,8 +32,8 @@
   {% else %}
   <div class="no-planillas">
     <div class="no-planillas-icon">📭</div>
-    <h2>No tienes planillas asignadas</h2>
-    <p>Contacta al administrador para que te asigne una planilla de trabajo.</p>
+    <h2>No tienes municipios asignados</h2>
+    <p>Contacta al administrador para que te asigne un municipio de trabajo.</p>
     <div class="no-planillas-actions">
       <a href="/admin/" class="btn btn-secondary">Ir al Panel de Admin</a>
       <a href="{% url 'landing' %}" class="btn btn-primary">Volver al Inicio</a>

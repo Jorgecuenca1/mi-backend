@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -128,7 +129,8 @@
             border-collapse: collapse;
         }
 
-        th, td {
+        th,
+        td {
             padding: 1rem;
             text-align: left;
             border-bottom: 1px solid #e2e8f0;
@@ -186,6 +188,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <h1>🏥 Sistema de Vacunación</h1>
@@ -199,18 +202,21 @@
         <div class="permission-info">
             <h3>Permisos de {{ user_type }}</h3>
             {% if user_type == 'Vacunador' %}
-                <p>Como vacunador, puedes ver únicamente las planillas que has creado, junto con sus responsables y mascotas asociadas.</p>
+            <p>Como vacunador, puedes ver únicamente los municipios que has creado, junto con sus responsables y
+                mascotas asociadas.</p>
             {% elif user_type == 'Técnico' %}
-                <p>Como técnico, puedes ver únicamente las planillas que te han sido asignadas para revisar, junto con sus responsables y mascotas.</p>
+            <p>Como técnico, puedes ver únicamente los municipios que te han sido asignados para revisar, junto con sus
+                responsables y mascotas.</p>
             {% elif user_type == 'Administrador' %}
-                <p>Como administrador, tienes acceso completo a todas las planillas, responsables y mascotas del sistema.</p>
+            <p>Como administrador, tienes acceso completo a todos los municipios, responsables y mascotas del sistema.
+            </p>
             {% endif %}
         </div>
 
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-number">{{ total_planillas }}</div>
-                <div class="stat-label">Planillas</div>
+                <div class="stat-label">Municipios</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number">{{ total_responsables }}</div>
@@ -227,47 +233,47 @@
         </div>
 
         <div class="data-section">
-            <div class="section-header">📋 Planillas</div>
+            <div class="section-header">📋 Municipios</div>
             <div class="table-container">
                 {% if planillas %}
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Municipio</th>
-                                <th>Zona</th>
-                                <th>Vacunador</th>
-                                {% if user_type == 'Administrador' or user_type == 'Técnico' %}
-                                    <th>Técnico Asignado</th>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Municipio</th>
+                            <th>Zona</th>
+                            <th>Vacunador</th>
+                            {% if user_type == 'Administrador' or user_type == 'Técnico' %}
+                            <th>Técnico Asignado</th>
+                            {% endif %}
+                            <th>Fecha Creación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for planilla in planillas %}
+                        <tr>
+                            <td><strong>{{ planilla.nombre }}</strong></td>
+                            <td>{{ planilla.municipio }}</td>
+                            <td>{{ planilla.get_urbano_rural_display }}</td>
+                            <td>{{ planilla.assigned_to.username }}</td>
+                            {% if user_type == 'Administrador' or user_type == 'Técnico' %}
+                            <td>
+                                {% if planilla.tecnico_asignado %}
+                                {{ planilla.tecnico_asignado.username }}
+                                {% else %}
+                                <em>Sin asignar</em>
                                 {% endif %}
-                                <th>Fecha Creación</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for planilla in planillas %}
-                                <tr>
-                                    <td><strong>{{ planilla.nombre }}</strong></td>
-                                    <td>{{ planilla.municipio }}</td>
-                                    <td>{{ planilla.get_urbano_rural_display }}</td>
-                                    <td>{{ planilla.assigned_to.username }}</td>
-                                    {% if user_type == 'Administrador' or user_type == 'Técnico' %}
-                                        <td>
-                                            {% if planilla.tecnico_asignado %}
-                                                {{ planilla.tecnico_asignado.username }}
-                                            {% else %}
-                                                <em>Sin asignar</em>
-                                            {% endif %}
-                                        </td>
-                                    {% endif %}
-                                    <td>{{ planilla.creada|date:"d/m/Y H:i" }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                            </td>
+                            {% endif %}
+                            <td>{{ planilla.creada|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
                 {% else %}
-                    <div class="no-data">
-                        📝 No hay planillas disponibles para tu perfil.
-                    </div>
+                <div class="no-data">
+                    📝 No hay municipios disponibles para tu perfil.
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -276,40 +282,199 @@
             <div class="section-header">👥 Responsables Recientes</div>
             <div class="table-container">
                 {% if planillas %}
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Teléfono</th>
-                                <th>Finca</th>
-                                <th>Planilla</th>
-                                <th>Mascotas</th>
-                                <th>Fecha</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for planilla in planillas %}
-                                {% for responsable in planilla.responsables.all|slice:":10" %}
-                                    <tr>
-                                        <td><strong>{{ responsable.nombre }}</strong></td>
-                                        <td>{{ responsable.telefono }}</td>
-                                        <td>{{ responsable.finca }}</td>
-                                        <td>{{ responsable.planilla.nombre }}</td>
-                                        <td>{{ responsable.mascotas.count }}</td>
-                                        <td>{{ responsable.creado|date:"d/m/Y H:i" }}</td>
-                                    </tr>
-                                {% endfor %}
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Teléfono</th>
+                            <th>Finca</th>
+                            <th>Municipio</th>
+                            <th>Mascotas</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for planilla in planillas %}
+                        {% for responsable in planilla.responsables.all|slice:":10" %}
+                        <tr>
+                            <td><strong>{{ responsable.nombre }}</strong></td>
+                            <td>{{ responsable.telefono }}</td>
+                            <td>{{ responsable.finca }}</td>
+                            <td>{{ responsable.planilla.nombre }}</td>
+                            <td>{{ responsable.mascotas.count }}</td>
+                            <td>{{ responsable.creado|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
                 {% else %}
-                    <div class="no-data">
-                        👥 No hay responsables disponibles para tu perfil.
-                    </div>
+                <div class="no-data">
+                    👥 No hay responsables disponibles para tu perfil.
+                </div>
                 {% endif %}
             </div>
         </div>
-    </div>
-</body>
-</html>
 
+        <!-- Sección de Usuarios (Solo para Administradores) -->
+        {% if user_type == 'Administrador' %}
+        <div class="data-section">
+            <div class="section-header">👥 Gestión de Usuarios</div>
+
+            <!-- Estadísticas de Usuarios -->
+            <div class="stats-grid" style="margin-bottom: 2rem;">
+                <div class="stat-card">
+                    <div class="stat-number">{{ total_vacunadores }}</div>
+                    <div class="stat-label">Vacunadores</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ total_tecnicos }}</div>
+                    <div class="stat-label">Técnicos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">{{ total_administradores }}</div>
+                    <div class="stat-label">Administradores</div>
+                </div>
+            </div>
+
+            <!-- Listado de Vacunadores -->
+            <div class="user-section">
+                <h4>🩺 Vacunadores</h4>
+                <div class="table-container">
+                    {% if vacunadores %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Municipios Asignados</th>
+                                <th>Responsables Creados</th>
+                                <th>Mascotas Registradas</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vacunador in vacunadores %}
+                            <tr>
+                                <td><strong>{{ vacunador.username }}</strong></td>
+                                <td>
+                                    {% with municipios_principales=vacunador.planillas.all municipios_adicionales=vacunador.planillas_como_vacunador_adicional.all %}
+                                    {% if municipios_principales or municipios_adicionales %}
+                                    {% for municipio in municipios_principales %}
+                                    <span class="badge" style="background: #c8e6c9; color: #2e7d32;">{{ municipio.nombre }} (Principal)</span>
+                                    {% endfor %}
+                                    {% for municipio in municipios_adicionales %}
+                                    <span class="badge">{{ municipio.nombre }}</span>
+                                    {% endfor %}
+                                    {% else %}
+                                    <em>Sin asignar</em>
+                                    {% endif %}
+                                    {% endwith %}
+                                </td>
+                                <td>{{ vacunador.responsables_creados.count }}</td>
+                                <td>{{ vacunador.mascotas_creadas.count }}</td>
+                                <td>
+                                    {% if vacunador.is_active %}
+                                    <span class="status-active">Activo</span>
+                                    {% else %}
+                                    <span class="status-inactive">Inactivo</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="no-data">
+                        👥 No hay vacunadores registrados.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Listado de Técnicos -->
+            <div class="user-section">
+                <h4>🔧 Técnicos</h4>
+                <div class="table-container">
+                    {% if tecnicos %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Usuario</th>
+                                <th>Municipios Asignados</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tecnico in tecnicos %}
+                            <tr>
+                                <td><strong>{{ tecnico.username }}</strong></td>
+                                <td>
+                                    {% with municipios_principales=tecnico.planillas_asignadas.all municipios_adicionales=tecnico.planillas_como_tecnico_adicional.all %}
+                                    {% if municipios_principales or municipios_adicionales %}
+                                    {% for municipio in municipios_principales %}
+                                    <span class="badge" style="background: #c8e6c9; color: #2e7d32;">{{ municipio.nombre }} (Principal)</span>
+                                    {% endfor %}
+                                    {% for municipio in municipios_adicionales %}
+                                    <span class="badge">{{ municipio.nombre }}</span>
+                                    {% endfor %}
+                                    {% else %}
+                                    <em>Sin asignar</em>
+                                    {% endif %}
+                                    {% endwith %}
+                                </td>
+                                <td>
+                                    {% if tecnico.is_active %}
+                                    <span class="status-active">Activo</span>
+                                    {% else %}
+                                    <span class="status-inactive">Inactivo</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="no-data">
+                        🔧 No hay técnicos registrados.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <style>
+        .user-section {
+            margin-bottom: 2rem;
+        }
+
+        .user-section h4 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin: 0.1rem;
+        }
+
+        .status-active {
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .status-inactive {
+            color: #f44336;
+            font-weight: bold;
+        }
+    </style>
+</body>
+
+</html>

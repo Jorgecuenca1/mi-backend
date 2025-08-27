@@ -7,8 +7,8 @@
   <div class="form-header">
     <div class="header-content">
       <h1>👤 Agregar Responsable</h1>
-      <p>Planilla: <strong>{{ planilla.nombre }}</strong></p>
-      <div class="planilla-info">
+      <p>Municipio: <strong>{{ planilla.nombre }}</strong></p>
+      <div class="municipio-info">
         <span class="info-badge">🏘️ {{ planilla.municipio }}</span>
         <span class="info-badge">📍 {{ planilla.urbano_rural|title }}</span>
         <span class="info-badge">🏠 {{ planilla.centro_poblado_vereda_barrio }}</span>
@@ -247,7 +247,7 @@
     opacity: 0.9;
   }
 
-  .planilla-info {
+  .municipio-info {
     display: flex;
     gap: 1rem;
     justify-content: center;
@@ -578,7 +578,7 @@
       font-size: 2rem;
     }
 
-    .planilla-info {
+    .municipio-info {
       flex-direction: column;
       align-items: center;
     }
