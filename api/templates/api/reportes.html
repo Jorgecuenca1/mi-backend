@@ -10,11 +10,36 @@
         📊 Reportes del Sistema
     </h1>
     <p style="font-size: 1.1rem; color: #6c757d;">
+        {% if user.tipo_usuario == 'administrador' %}
+        Estadísticas completas de todos los municipios y registros
+        {% elif user.tipo_usuario == 'tecnico' %}
+        Estadísticas de todos los registros de tus municipios asignados
+        {% elif user.tipo_usuario == 'vacunador' %}
+        Estadísticas de tus propios registros y municipios
+        {% else %}
         Estadísticas detalladas de vacunación por municipio y zona
+        {% endif %}
     </p>
     <p style="font-size: 0.9rem; color: #6c757d; font-style: italic;">
         ✅ Todas las mascotas están vacunadas • El campo "antecedente vacunal" se refiere a tarjeta de vacunación previa
     </p>
+    {% if user.is_authenticated %}
+    <div style="background: rgba(255,255,255,0.8); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+        <p style="margin: 0; font-size: 0.9rem; color: #495057;">
+            <strong>Usuario:</strong> {{ user.username }} |
+            <strong>Rol:</strong>
+            {% if user.tipo_usuario == 'administrador' %}
+            🔧 Administrador
+            {% elif user.tipo_usuario == 'tecnico' %}
+            👨‍🔬 Técnico
+            {% elif user.tipo_usuario == 'vacunador' %}
+            💉 Vacunador
+            {% else %}
+            👤 Usuario
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
 </section>
 
 <!-- Summary Stats -->

@@ -255,10 +255,29 @@ def landing_page(request):
     return render(request, 'api/landing.html', context)
 
 
+@login_required
 def reportes_view(request):
-    """Vista para reportes detallados por municipio"""
-    # Obtener todas las planillas con sus estadísticas
-    planillas = Planilla.objects.select_related().prefetch_related('responsables__mascotas')
+    """Vista para reportes detallados por municipio - filtrada por rol de usuario"""
+    user = request.user
+    
+    # Filtrar planillas según el rol del usuario
+    if user.tipo_usuario == 'administrador':
+        # Administradores ven todas las planillas
+        planillas = Planilla.objects.select_related().prefetch_related('responsables__mascotas')
+    elif user.tipo_usuario == 'tecnico':
+        # Técnicos ven solo las planillas de sus municipios asignados
+        planillas = Planilla.objects.filter(
+            Q(tecnico_asignado=user) |
+            Q(tecnicos_adicionales=user)
+        ).select_related().prefetch_related('responsables__mascotas').distinct()
+    elif user.tipo_usuario == 'vacunador':
+        # Vacunadores ven solo sus planillas asignadas
+        planillas = Planilla.objects.filter(
+            Q(assigned_to=user) |
+            Q(vacunadores_adicionales=user)
+        ).select_related().prefetch_related('responsables__mascotas').distinct()
+    else:
+        planillas = Planilla.objects.none()
     
     # Diccionario para agrupar por municipio
     municipios_stats = {}
@@ -283,10 +302,24 @@ def reportes_view(request):
         municipios_stats[municipio]['planillas'] += 1
         
         # Contar responsables y mascotas por planilla
-        for responsable in planilla.responsables.all():
+        # Filtrar responsables según el rol del usuario
+        if user.tipo_usuario == 'vacunador':
+            # Vacunadores solo ven sus propios registros
+            responsables = planilla.responsables.filter(created_by=user)
+        else:
+            # Técnicos y administradores ven todos los registros de la planilla
+            responsables = planilla.responsables.all()
+            
+        for responsable in responsables:
             municipios_stats[municipio]['responsables'] += 1
             
-            for mascota in responsable.mascotas.all():
+            # Filtrar mascotas según el rol del usuario
+            if user.tipo_usuario == 'vacunador':
+                mascotas = responsable.mascotas.filter(created_by=user)
+            else:
+                mascotas = responsable.mascotas.all()
+            
+            for mascota in mascotas:
                 municipios_stats[municipio]['total_mascotas'] += 1
                 
                 # Contar por tarjeta de vacunación previa (todos son vacunados ahora)
@@ -380,6 +413,25 @@ def login_view(request):
             messages.error(request, 'Usuario o contraseña incorrectos.')
     
     return render(request, 'api/login.html')
+
+
+@login_required
+def dashboard_principal(request):
+    """Dashboard principal que redirije según el tipo de usuario"""
+    user = request.user
+    
+    if user.tipo_usuario == 'administrador':
+        # Administradores van a la landing page con estadísticas completas
+        return redirect('landing')
+    elif user.tipo_usuario == 'tecnico':
+        # Técnicos van directamente a reportes (pueden ver todos los registros de sus municipios)
+        return redirect('reportes')
+    elif user.tipo_usuario == 'vacunador':
+        # Vacunadores van a reportes (solo ven sus propios registros)
+        return redirect('reportes')
+    else:
+        messages.error(request, 'Tipo de usuario no válido.')
+        return redirect('login')
 
 
 def logout_view(request):

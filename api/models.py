@@ -86,8 +86,38 @@ class Planilla(models.Model):
     zona = models.CharField(max_length=100, default="Sin especificar", help_text="Zona específica")
     creada = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name = "Municipio"
+        verbose_name_plural = "Municipios"
+
     def __str__(self):
         return f"{self.nombre} ({self.assigned_to.username})"
+    
+    def get_all_vacunadores(self):
+        """Retorna todos los vacunadores asignados (principal + adicionales)"""
+        vacunadores = set()
+        if self.assigned_to and self.assigned_to.tipo_usuario == 'vacunador':
+            vacunadores.add(self.assigned_to)
+        vacunadores.update(self.vacunadores_adicionales.all())
+        return list(vacunadores)
+    
+    def get_all_tecnicos(self):
+        """Retorna todos los técnicos asignados (principal + adicionales)"""
+        tecnicos = set()
+        if self.tecnico_asignado:
+            tecnicos.add(self.tecnico_asignado)
+        tecnicos.update(self.tecnicos_adicionales.all())
+        return list(tecnicos)
+    
+    def user_can_access(self, user):
+        """Verifica si un usuario puede acceder a esta planilla/municipio"""
+        if user.tipo_usuario == 'administrador':
+            return True
+        elif user.tipo_usuario == 'vacunador':
+            return user in self.get_all_vacunadores()
+        elif user.tipo_usuario == 'tecnico':
+            return user in self.get_all_tecnicos()
+        return False
 
 class Responsable(models.Model):
     nombre = models.CharField(max_length=100)
@@ -99,6 +129,16 @@ class Responsable(models.Model):
     zona = models.CharField(max_length=100, default="Sin especificar", help_text="Zona específica de vacunación")
     nombre_zona = models.CharField(max_length=150, default="Sin especificar", help_text="Nombre descriptivo de la zona")
     lote_vacuna = models.CharField(max_length=50, default="Sin especificar", help_text="Lote de la vacuna utilizada")
+    
+    # Campo para rastrear quién creó el registro
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='responsables_creados',
+        null=True,  # Permitir null para registros existentes
+        blank=True,
+        help_text="Usuario que creó este responsable"
+    )
     
     creado = models.DateTimeField(auto_now_add=True)
 
@@ -123,6 +163,16 @@ class Mascota(models.Model):
     
     # Nuevo campo para foto de la mascota
     foto = models.ImageField(upload_to='mascotas/fotos/', null=True, blank=True, help_text="Foto de la mascota")
+    
+    # Campo para rastrear quién creó el registro
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='mascotas_creadas',
+        null=True,  # Permitir null para registros existentes
+        blank=True,
+        help_text="Usuario que creó esta mascota"
+    )
     
     creado = models.DateTimeField(auto_now_add=True)
 
