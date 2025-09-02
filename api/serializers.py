@@ -4,7 +4,7 @@ from .models import Planilla, Mascota, Responsable
 class ResponsableSerializer(serializers.ModelSerializer):
     class Meta:
         model = Responsable
-        fields = ['id', 'nombre', 'telefono', 'finca', 'planilla', 'zona', 'nombre_zona', 'lote_vacuna', 'creado']
+        fields = ['id', 'nombre', 'telefono', 'finca', 'planilla', 'zona', 'nombre_zona', 'lote_vacuna', 'creado', 'created_by']
 
 class MascotaSerializer(serializers.ModelSerializer):
     latitud = serializers.DecimalField(max_digits=15, decimal_places=10, coerce_to_string=False)
@@ -12,10 +12,24 @@ class MascotaSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Mascota
-        fields = ['id', 'nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'responsable', 'latitud', 'longitud', 'foto', 'creado']
+        fields = ['id', 'nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'responsable', 'latitud', 'longitud', 'foto', 'creado', 'created_by']
 
 class PlanillaSerializer(serializers.ModelSerializer):
     responsables = ResponsableSerializer(many=True, read_only=True)
+    
+    def to_representation(self, instance):
+        """Personalizar la representación para filtrar responsables por usuario"""
+        data = super().to_representation(instance)
+        
+        # Si hay un contexto con request, filtrar responsables por created_by
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            # Solo para vacunadores - filtrar por created_by
+            if hasattr(request.user, 'tipo_usuario') and request.user.tipo_usuario == 'vacunador':
+                responsables_filtrados = instance.responsables.filter(created_by=request.user)
+                data['responsables'] = ResponsableSerializer(responsables_filtrados, many=True).data
+        
+        return data
     
     # Campos extra para compatibilidad con app móvil (MANTENER)
     usuario = serializers.SerializerMethodField()

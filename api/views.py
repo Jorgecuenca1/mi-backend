@@ -60,8 +60,14 @@ class ResponsableViewSet(APIView):
         """GET: Lista responsables de una planilla específica"""
         if planilla_id:
             responsables = Responsable.objects.filter(planilla_id=planilla_id)
+            # Filtrar por created_by si es vacunador
+            if request.user.is_authenticated and hasattr(request.user, 'tipo_usuario') and request.user.tipo_usuario == 'vacunador':
+                responsables = responsables.filter(created_by=request.user)
         else:
             responsables = Responsable.objects.all()
+            # Filtrar por created_by si es vacunador
+            if request.user.is_authenticated and hasattr(request.user, 'tipo_usuario') and request.user.tipo_usuario == 'vacunador':
+                responsables = responsables.filter(created_by=request.user)
         return Response(ResponsableSerializer(responsables, many=True).data)
     
     def post(self, request, planilla_id=None):
@@ -88,7 +94,11 @@ class ResponsableViewSet(APIView):
         
         responsable_serializer = ResponsableSerializer(data=responsable_data)
         if responsable_serializer.is_valid():
-            responsable = responsable_serializer.save()
+            # Asignar created_by si el usuario está autenticado
+            if request.user.is_authenticated:
+                responsable = responsable_serializer.save(created_by=request.user)
+            else:
+                responsable = responsable_serializer.save()
             
             # Crear mascotas si se proporcionan
             mascotas_data = request.data.get('mascotas', [])
@@ -148,7 +158,11 @@ class ResponsableViewSet(APIView):
                     
                     mascota_serializer = MascotaSerializer(data=mascota_data_copy)
                     if mascota_serializer.is_valid():
-                        mascota = mascota_serializer.save()
+                        # Asignar created_by si el usuario está autenticado
+                        if request.user.is_authenticated:
+                            mascota = mascota_serializer.save(created_by=request.user)
+                        else:
+                            mascota = mascota_serializer.save()
                         mascotas_creadas.append(mascota_serializer.data)
                         print(f"✅ Mascota {mascota.nombre} creada exitosamente")
                     else:
@@ -170,7 +184,10 @@ class MascotaViewSet(APIView):
     def get(self, request, responsable_id):
         """GET: Lista mascotas de un responsable específico"""
         try:
+            # Filtrar mascotas por responsable y por created_by si es vacunador
             mascotas = Mascota.objects.filter(responsable_id=responsable_id)
+            if request.user.is_authenticated and hasattr(request.user, 'tipo_usuario') and request.user.tipo_usuario == 'vacunador':
+                mascotas = mascotas.filter(created_by=request.user)
             return Response(MascotaSerializer(mascotas, many=True).data)
         except Responsable.DoesNotExist:
             return Response({'error': 'Responsable no encontrado'}, status=status.HTTP_404_NOT_FOUND)
@@ -187,7 +204,11 @@ class MascotaViewSet(APIView):
         
         serializer = MascotaSerializer(data=mascota_data)
         if serializer.is_valid():
-            mascota = serializer.save()
+            # Asignar created_by si el usuario está autenticado
+            if request.user.is_authenticated:
+                mascota = serializer.save(created_by=request.user)
+            else:
+                mascota = serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -213,7 +234,7 @@ def mis_planillas(request):
             Q(tecnico_asignado__username=username) |  # Técnico principal
             Q(tecnicos_adicionales__username=username)  # Técnicos adicionales
         ).distinct()
-    return Response(PlanillaSerializer(qs, many=True).data)
+    return Response(PlanillaSerializer(qs, many=True, context={'request': request}).data)
 
 
 @api_view(['GET', 'POST'])
@@ -568,4 +589,4 @@ def dashboard_principal(request):
         return redirect('dashboard_tecnico')
     else:
         messages.error(request, 'Tipo de usuario no válido.')
-        return redirect('login') 
+    return redirect('login') 

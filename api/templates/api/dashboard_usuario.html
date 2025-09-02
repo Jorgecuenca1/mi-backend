@@ -236,44 +236,44 @@
             <div class="section-header">📋 Municipios</div>
             <div class="table-container">
                 {% if planillas %}
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Nombre</th>
-                            <th>Municipio</th>
-                            <th>Zona</th>
-                            <th>Vacunador</th>
-                            {% if user_type == 'Administrador' or user_type == 'Técnico' %}
-                            <th>Técnico Asignado</th>
-                            {% endif %}
-                            <th>Fecha Creación</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for planilla in planillas %}
-                        <tr>
-                            <td><strong>{{ planilla.nombre }}</strong></td>
-                            <td>{{ planilla.municipio }}</td>
-                            <td>{{ planilla.get_urbano_rural_display }}</td>
-                            <td>{{ planilla.assigned_to.username }}</td>
-                            {% if user_type == 'Administrador' or user_type == 'Técnico' %}
-                            <td>
-                                {% if planilla.tecnico_asignado %}
-                                {{ planilla.tecnico_asignado.username }}
-                                {% else %}
-                                <em>Sin asignar</em>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Municipio</th>
+                                <th>Zona</th>
+                                <th>Vacunador</th>
+                                {% if user_type == 'Administrador' or user_type == 'Técnico' %}
+                                    <th>Técnico Asignado</th>
                                 {% endif %}
-                            </td>
-                            {% endif %}
-                            <td>{{ planilla.creada|date:"d/m/Y H:i" }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                <th>Fecha Creación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for planilla in planillas %}
+                                <tr>
+                                    <td><strong>{{ planilla.nombre }}</strong></td>
+                                    <td>{{ planilla.municipio }}</td>
+                                    <td>{{ planilla.get_urbano_rural_display }}</td>
+                                    <td>{{ planilla.assigned_to.username }}</td>
+                                    {% if user_type == 'Administrador' or user_type == 'Técnico' %}
+                                        <td>
+                                            {% if planilla.tecnico_asignado %}
+                                                {{ planilla.tecnico_asignado.username }}
+                                            {% else %}
+                                                <em>Sin asignar</em>
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+                                    <td>{{ planilla.creada|date:"d/m/Y H:i" }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 {% else %}
-                <div class="no-data">
+                    <div class="no-data">
                     📝 No hay municipios disponibles para tu perfil.
-                </div>
+                    </div>
                 {% endif %}
             </div>
         </div>
@@ -282,36 +282,36 @@
             <div class="section-header">👥 Responsables Recientes</div>
             <div class="table-container">
                 {% if planillas %}
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Nombre</th>
-                            <th>Teléfono</th>
-                            <th>Finca</th>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Teléfono</th>
+                                <th>Finca</th>
                             <th>Municipio</th>
-                            <th>Mascotas</th>
-                            <th>Fecha</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for planilla in planillas %}
-                        {% for responsable in planilla.responsables.all|slice:":10" %}
-                        <tr>
-                            <td><strong>{{ responsable.nombre }}</strong></td>
-                            <td>{{ responsable.telefono }}</td>
-                            <td>{{ responsable.finca }}</td>
-                            <td>{{ responsable.planilla.nombre }}</td>
-                            <td>{{ responsable.mascotas.count }}</td>
-                            <td>{{ responsable.creado|date:"d/m/Y H:i" }}</td>
-                        </tr>
-                        {% endfor %}
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                <th>Mascotas</th>
+                                <th>Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for planilla in planillas %}
+                                {% for responsable in planilla.responsables.all|slice:":10" %}
+                                    <tr>
+                                        <td><strong>{{ responsable.nombre }}</strong></td>
+                                        <td>{{ responsable.telefono }}</td>
+                                        <td>{{ responsable.finca }}</td>
+                                        <td>{{ responsable.planilla.nombre }}</td>
+                                        <td>{{ responsable.mascotas.count }}</td>
+                                        <td>{{ responsable.creado|date:"d/m/Y H:i" }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 {% else %}
-                <div class="no-data">
-                    👥 No hay responsables disponibles para tu perfil.
-                </div>
+                    <div class="no-data">
+                        👥 No hay responsables disponibles para tu perfil.
+                    </div>
                 {% endif %}
             </div>
         </div>

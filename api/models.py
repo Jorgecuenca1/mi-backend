@@ -7,7 +7,6 @@ from django.db import models
 class Veterinario(AbstractUser):
     """Usuario personalizado para veterinarios,
        con related_name únicos en los M2M heredados."""
-    
     TIPO_USUARIO_CHOICES = [
         ('administrador', 'Administrador'),
         ('vacunador', 'Vacunador'),
@@ -15,13 +14,10 @@ class Veterinario(AbstractUser):
     ]
     
     tipo_usuario = models.CharField(
-        max_length=15,
+        max_length=20,
         choices=TIPO_USUARIO_CHOICES,
         default='vacunador',
-        help_text='Tipo de usuario: administrador, vacunador o técnico',
-        null=True,
-        blank=True
-
+        help_text='Tipo de usuario en el sistema'
     )
     
     groups = models.ManyToManyField(
@@ -52,32 +48,36 @@ class Planilla(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='planillas',
-        help_text='Vacunador que creó la planilla'
+        null=True,
+        blank=True,
+        help_text="Vacunador principal asignado (compatibilidad)"
     )
+    
+    # Nuevos campos para múltiples asignaciones
     tecnico_asignado = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
-        related_name='planillas_asignadas',
         null=True,
         blank=True,
-        help_text='Técnico asignado para revisar la planilla'
+        related_name='planillas_asignadas',
+        limit_choices_to={'tipo_usuario': 'tecnico'},
+        help_text="Técnico principal asignado"
     )
     
-    # NUEVOS CAMPOS: Múltiples vacunadores y técnicos
     vacunadores_adicionales = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
-        related_name='planillas_como_vacunador_adicional',
         blank=True,
+        related_name='planillas_como_vacunador_adicional',
         limit_choices_to={'tipo_usuario': 'vacunador'},
-        help_text='Vacunadores adicionales asignados a esta planilla'
+        help_text="Vacunadores adicionales asignados"
     )
     
     tecnicos_adicionales = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
-        related_name='planillas_como_tecnico_adicional',
         blank=True,
+        related_name='planillas_como_tecnico_adicional',
         limit_choices_to={'tipo_usuario': 'tecnico'},
-        help_text='Técnicos adicionales asignados para revisar esta planilla'
+        help_text="Técnicos adicionales asignados"
     )
     
     municipio = models.CharField(max_length=100, default="Sin especificar", help_text="Nombre del municipio")
@@ -91,32 +91,34 @@ class Planilla(models.Model):
         verbose_name_plural = "Municipios"
 
     def __str__(self):
-        return f"{self.nombre} ({self.assigned_to.username})"
+        return f"{self.nombre} ({self.assigned_to.username if self.assigned_to else 'Sin asignar'})"
     
     def get_all_vacunadores(self):
         """Retorna todos los vacunadores asignados (principal + adicionales)"""
-        vacunadores = set()
+        vacunadores = []
         if self.assigned_to and self.assigned_to.tipo_usuario == 'vacunador':
-            vacunadores.add(self.assigned_to)
-        vacunadores.update(self.vacunadores_adicionales.all())
-        return list(vacunadores)
+            vacunadores.append(self.assigned_to)
+        vacunadores.extend(self.vacunadores_adicionales.all())
+        return vacunadores
     
     def get_all_tecnicos(self):
         """Retorna todos los técnicos asignados (principal + adicionales)"""
-        tecnicos = set()
+        tecnicos = []
         if self.tecnico_asignado:
-            tecnicos.add(self.tecnico_asignado)
-        tecnicos.update(self.tecnicos_adicionales.all())
-        return list(tecnicos)
+            tecnicos.append(self.tecnico_asignado)
+        tecnicos.extend(self.tecnicos_adicionales.all())
+        return tecnicos
     
     def user_can_access(self, user):
-        """Verifica si un usuario puede acceder a esta planilla/municipio"""
+        """Verifica si un usuario puede acceder a esta planilla"""
         if user.tipo_usuario == 'administrador':
             return True
         elif user.tipo_usuario == 'vacunador':
-            return user in self.get_all_vacunadores()
+            return (self.assigned_to == user or 
+                   user in self.vacunadores_adicionales.all())
         elif user.tipo_usuario == 'tecnico':
-            return user in self.get_all_tecnicos()
+            return (self.tecnico_asignado == user or 
+                   user in self.tecnicos_adicionales.all())
         return False
 
 class Responsable(models.Model):
@@ -130,13 +132,13 @@ class Responsable(models.Model):
     nombre_zona = models.CharField(max_length=150, default="Sin especificar", help_text="Nombre descriptivo de la zona")
     lote_vacuna = models.CharField(max_length=50, default="Sin especificar", help_text="Lote de la vacuna utilizada")
     
-    # Campo para rastrear quién creó el registro
+    # Campo para rastrear quién creó este responsable
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='responsables_creados',
-        null=True,  # Permitir null para registros existentes
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
+        related_name='responsables_creados',
         help_text="Usuario que creó este responsable"
     )
     
@@ -164,17 +166,25 @@ class Mascota(models.Model):
     # Nuevo campo para foto de la mascota
     foto = models.ImageField(upload_to='mascotas/fotos/', null=True, blank=True, help_text="Foto de la mascota")
     
-    # Campo para rastrear quién creó el registro
+    # Campo para rastrear quién creó esta mascota
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='mascotas_creadas',
-        null=True,  # Permitir null para registros existentes
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
+        related_name='mascotas_creadas',
         help_text="Usuario que creó esta mascota"
     )
     
     creado = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def getRazasPorTipo(tipo):
+        if tipo == 'perro':
+            return [choice[0] for choice in Mascota.RAZA_PERRO]
+        elif tipo == 'gato':
+            return [choice[0] for choice in Mascota.RAZA_GATO]
+        return ['M']
 
     def __str__(self):
         return f"{self.nombre} ({self.tipo})"
