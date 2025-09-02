@@ -153,6 +153,94 @@
     {% endif %}
 </section>
 
+<!-- Detailed Tables by Municipality (Only for Administrators) -->
+{% if user.tipo_usuario == 'administrador' and reportes_detallados_municipio %}
+<section class="card">
+    <div class="card-header">
+        <h2 class="card-title">📋 Tablas Detalladas por Municipio</h2>
+        <p style="color: #6c757d; margin-top: 0.5rem;">Vista detallada de todos los responsables y mascotas por
+            municipio</p>
+    </div>
+
+    {% for municipio_data in reportes_detallados_municipio %}
+    <div style="margin-bottom: 3rem; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden;">
+        <div
+            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; text-align: center;">
+            <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold;">🏘️ {{ municipio_data.municipio }}</h3>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">{{ municipio_data.responsables|length }} responsables
+                registrados</p>
+        </div>
+
+        {% if municipio_data.responsables %}
+        <div style="overflow-x: auto;">
+            <table class="table" style="margin: 0;">
+                <thead style="background: #f8f9fa;">
+                    <tr>
+                        <th style="padding: 1rem;">Responsable</th>
+                        <th style="padding: 1rem;">Teléfono</th>
+                        <th style="padding: 1rem;">Finca</th>
+                        <th style="padding: 1rem;">Zona</th>
+                        <th style="padding: 1rem;">Nombre Zona</th>
+                        <th style="padding: 1rem;">Lote Vacuna</th>
+                        <th style="padding: 1rem;">Mascotas</th>
+                        <th style="padding: 1rem;">Creado por</th>
+                        <th style="padding: 1rem;">Fecha</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for responsable in municipio_data.responsables %}
+                    <tr style="border-bottom: 1px solid #e9ecef;">
+                        <td style="padding: 1rem; font-weight: 600; color: #495057;">{{ responsable.nombre }}</td>
+                        <td style="padding: 1rem;">{{ responsable.telefono }}</td>
+                        <td style="padding: 1rem;">{{ responsable.finca }}</td>
+                        <td style="padding: 1rem;">
+                            {% if responsable.zona == 'barrio' %}
+                            🏙️ {{ responsable.zona|capfirst }}
+                            {% elif responsable.zona == 'vereda' %}
+                            🌾 {{ responsable.zona|capfirst }}
+                            {% else %}
+                            📍 {{ responsable.zona|capfirst }}
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1rem;">{{ responsable.nombre_zona }}</td>
+                        <td style="padding: 1rem; font-family: monospace; background: #f8f9fa; border-radius: 4px;">{{
+                            responsable.lote_vacuna }}</td>
+                        <td style="padding: 1rem;">
+                            <div style="max-width: 300px;">
+                                {% for mascota in responsable.mascotas %}
+                                <div
+                                    style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; padding: 0.5rem; background: {% if mascota.tipo == 'perro' %}#fff3e0{% else %}#fce4ec{% endif %}; border-radius: 6px; font-size: 0.85rem;">
+                                    <span>{% if mascota.tipo == 'perro' %}🐕{% else %}🐱{% endif %}</span>
+                                    <strong>{{ mascota.nombre }}</strong>
+                                    <span style="color: #6c757d;">({{ mascota.raza }}, {{ mascota.color }})</span>
+                                    {% if mascota.antecedente_vacunal %}
+                                    <span style="color: #28a745; font-size: 0.7rem;">✅ Tarjeta</span>
+                                    {% endif %}
+                                </div>
+                                {% empty %}
+                                <span style="color: #6c757d; font-style: italic;">Sin mascotas</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td style="padding: 1rem; font-size: 0.85rem; color: #6c757d;">{{ responsable.created_by }}</td>
+                        <td style="padding: 1rem; font-size: 0.85rem; color: #6c757d;">{{ responsable.creado|date:"d/m/Y
+                            H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 2rem; color: #6c757d;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📝</div>
+            <p>No hay responsables registrados en este municipio</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</section>
+{% endif %}
+
 <!-- Top Municipalities -->
 {% if top_municipios_mascotas %}
 <section class="card">

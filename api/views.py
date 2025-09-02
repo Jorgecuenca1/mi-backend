@@ -348,11 +348,21 @@ def reportes_view(request):
                 else:
                     municipios_stats[municipio]['sin_tarjeta_previa'] += 1
                 
-                # Contar por zona (basado en la planilla)
-                if planilla.urbano_rural == 'urbano':
+                # Contar por zona (basado en la zona del responsable)
+                # Mapear zona del responsable a urbano/rural
+                if responsable.zona == 'barrio':
+                    municipios_stats[municipio]['zona_urbana'] += 1
+                elif responsable.zona == 'vereda':
+                    municipios_stats[municipio]['zona_rural'] += 1
+                elif responsable.zona == 'centro poblado':
+                    # Centro poblado puede ser urbano o rural, por defecto urbano
                     municipios_stats[municipio]['zona_urbana'] += 1
                 else:
-                    municipios_stats[municipio]['zona_rural'] += 1
+                    # Fallback: usar el valor de la planilla si la zona del responsable no está definida
+                    if planilla.urbano_rural == 'urbano':
+                        municipios_stats[municipio]['zona_urbana'] += 1
+                    else:
+                        municipios_stats[municipio]['zona_rural'] += 1
                 
                 # Contar por tipo
                 if mascota.tipo == 'perro':
@@ -374,6 +384,51 @@ def reportes_view(request):
     # Ordenar por municipio
     reportes_municipio.sort(key=lambda x: x['municipio'])
     
+    # Para administradores, generar datos detallados por municipio
+    reportes_detallados_municipio = {}
+    if user.tipo_usuario == 'administrador':
+        for planilla in planillas:
+            municipio = planilla.municipio
+            if municipio not in reportes_detallados_municipio:
+                reportes_detallados_municipio[municipio] = {
+                    'municipio': municipio,
+                    'responsables': []
+                }
+            
+            # Obtener todos los responsables de esta planilla
+            responsables = planilla.responsables.all()
+            for responsable in responsables:
+                mascotas = responsable.mascotas.all()
+                responsable_data = {
+                    'nombre': responsable.nombre,
+                    'telefono': responsable.telefono,
+                    'finca': responsable.finca,
+                    'zona': responsable.zona,
+                    'nombre_zona': responsable.nombre_zona,
+                    'lote_vacuna': responsable.lote_vacuna,
+                    'creado': responsable.creado,
+                    'created_by': responsable.created_by.username if responsable.created_by else 'N/A',
+                    'mascotas': []
+                }
+                
+                for mascota in mascotas:
+                    mascota_data = {
+                        'nombre': mascota.nombre,
+                        'tipo': mascota.tipo,
+                        'raza': mascota.raza,
+                        'color': mascota.color,
+                        'antecedente_vacunal': mascota.antecedente_vacunal,
+                        'creado': mascota.creado,
+                        'created_by': mascota.created_by.username if mascota.created_by else 'N/A',
+                    }
+                    responsable_data['mascotas'].append(mascota_data)
+                
+                reportes_detallados_municipio[municipio]['responsables'].append(responsable_data)
+        
+        # Convertir a lista y ordenar
+        reportes_detallados_municipio = list(reportes_detallados_municipio.values())
+        reportes_detallados_municipio.sort(key=lambda x: x['municipio'])
+    
     # Calcular estadísticas generales
     total_municipios = len(municipios_stats)
     total_planillas = sum(stats['planillas'] for stats in municipios_stats.values())
@@ -389,11 +444,20 @@ def reportes_view(request):
     # Calcular porcentajes generales
     if total_mascotas > 0:
         porcentaje_general_tarjeta = round((total_con_tarjeta / total_mascotas) * 100, 1)
+        porcentaje_urbano = round((total_urbano / total_mascotas) * 100, 1)
+        porcentaje_rural = round((total_rural / total_mascotas) * 100, 1)
+        porcentaje_perros = round((total_perros / total_mascotas) * 100, 1)
+        porcentaje_gatos = round((total_gatos / total_mascotas) * 100, 1)
     else:
         porcentaje_general_tarjeta = 0
+        porcentaje_urbano = 0
+        porcentaje_rural = 0
+        porcentaje_perros = 0
+        porcentaje_gatos = 0
     
     context = {
         'reportes_municipio': reportes_municipio,
+        'reportes_detallados_municipio': reportes_detallados_municipio if user.tipo_usuario == 'administrador' else [],
         'total_municipios': total_municipios,
         'total_planillas': total_planillas,
         'total_responsables': total_responsables,
@@ -405,6 +469,10 @@ def reportes_view(request):
         'total_perros': total_perros,
         'total_gatos': total_gatos,
         'porcentaje_general_tarjeta': porcentaje_general_tarjeta,
+        'porcentaje_urbano': porcentaje_urbano,
+        'porcentaje_rural': porcentaje_rural,
+        'porcentaje_perros': porcentaje_perros,
+        'porcentaje_gatos': porcentaje_gatos,
     }
     
     return render(request, 'api/reportes.html', context)
