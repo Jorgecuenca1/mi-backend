@@ -157,6 +157,7 @@ class Mascota(models.Model):
     raza = models.CharField(max_length=10, default='M')
     color = models.CharField(max_length=50, default='Sin especificar')
     antecedente_vacunal = models.BooleanField(default=False)
+    esterilizado = models.BooleanField(default=False, help_text="Indica si la mascota está esterilizada")
     responsable = models.ForeignKey(Responsable, on_delete=models.CASCADE, related_name='mascotas', null=True, blank=True)
     
     # Nuevos campos para georreferenciación

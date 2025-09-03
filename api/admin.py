@@ -81,9 +81,9 @@ class PlanillaAdmin(NoLogMixin, admin.ModelAdmin):
 @admin.register(Responsable)
 class ResponsableAdmin(NoLogMixin, admin.ModelAdmin):
     """Admin para responsables de mascotas."""
-    list_display = ('id', 'nombre', 'telefono', 'finca', 'planilla', 'zona', 'nombre_zona', 'lote_vacuna', 'creado')
-    list_filter = ('planilla', 'zona', 'lote_vacuna', 'creado')
-    search_fields = ('nombre', 'telefono', 'finca', 'zona', 'nombre_zona', 'lote_vacuna')
+    list_display = ('id', 'nombre', 'telefono', 'finca', 'planilla', 'zona', 'nombre_zona', 'lote_vacuna', 'created_by', 'creado')
+    list_filter = ('planilla', 'zona', 'lote_vacuna', 'created_by', 'creado')
+    search_fields = ('nombre', 'telefono', 'finca', 'zona', 'nombre_zona', 'lote_vacuna', 'created_by__username')
     ordering = ('-creado',)
     
     fieldsets = (
@@ -95,24 +95,24 @@ class ResponsableAdmin(NoLogMixin, admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Información del Sistema', {
-            'fields': ('creado',),
+            'fields': ('created_by', 'creado'),
             'classes': ('collapse',)
         }),
     )
-    readonly_fields = ('creado',)
+    readonly_fields = ('created_by', 'creado')
 
 @admin.register(Mascota)
 class MascotaAdmin(NoLogMixin, admin.ModelAdmin):
     """Admin para las mascotas de cada responsable."""
-    list_display = ('id', 'nombre', 'tipo', 'raza', 'color', 'responsable', 'latitud', 'longitud', 'creado')
-    list_filter = ('tipo', 'raza', 'antecedente_vacunal', 'responsable', 'creado')
-    search_fields = ('nombre', 'responsable__nombre')
+    list_display = ('id', 'nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'esterilizado', 'responsable', 'created_by', 'creado')
+    list_filter = ('tipo', 'raza', 'antecedente_vacunal', 'esterilizado', 'responsable', 'created_by', 'creado')
+    search_fields = ('nombre', 'responsable__nombre', 'created_by__username')
     ordering = ('-creado',)
-    readonly_fields = ('creado',)
+    readonly_fields = ('created_by', 'creado')
     
     fieldsets = (
         ('Información Básica', {
-            'fields': ('nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'responsable')
+            'fields': ('nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'esterilizado', 'responsable')
         }),
         ('Georreferenciación', {
             'fields': ('latitud', 'longitud'),
@@ -123,7 +123,7 @@ class MascotaAdmin(NoLogMixin, admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('Información del Sistema', {
-            'fields': ('creado',),
+            'fields': ('created_by', 'creado'),
             'classes': ('collapse',)
         }),
     )

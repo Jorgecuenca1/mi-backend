@@ -2,9 +2,23 @@ from rest_framework import serializers
 from .models import Planilla, Mascota, Responsable
 
 class ResponsableSerializer(serializers.ModelSerializer):
+    mascotas = serializers.SerializerMethodField()
+    
     class Meta:
         model = Responsable
-        fields = ['id', 'nombre', 'telefono', 'finca', 'planilla', 'zona', 'nombre_zona', 'lote_vacuna', 'creado', 'created_by']
+        fields = ['id', 'nombre', 'telefono', 'finca', 'planilla', 'zona', 'nombre_zona', 'lote_vacuna', 'creado', 'created_by', 'mascotas']
+    
+    def get_mascotas(self, obj):
+        """Obtener mascotas del responsable, filtradas por usuario si es necesario"""
+        request = self.context.get('request')
+        mascotas = obj.mascotas.all()
+        
+        # Filtrar mascotas por created_by si es vacunador
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            if hasattr(request.user, 'tipo_usuario') and request.user.tipo_usuario == 'vacunador':
+                mascotas = mascotas.filter(created_by=request.user)
+        
+        return MascotaSerializer(mascotas, many=True, context=self.context).data
 
 class MascotaSerializer(serializers.ModelSerializer):
     latitud = serializers.DecimalField(max_digits=15, decimal_places=10, coerce_to_string=False)
@@ -12,7 +26,7 @@ class MascotaSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Mascota
-        fields = ['id', 'nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'responsable', 'latitud', 'longitud', 'foto', 'creado', 'created_by']
+        fields = ['id', 'nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'esterilizado', 'responsable', 'latitud', 'longitud', 'foto', 'creado', 'created_by']
 
 class PlanillaSerializer(serializers.ModelSerializer):
     responsables = ResponsableSerializer(many=True, read_only=True)
@@ -27,7 +41,7 @@ class PlanillaSerializer(serializers.ModelSerializer):
             # Solo para vacunadores - filtrar por created_by
             if hasattr(request.user, 'tipo_usuario') and request.user.tipo_usuario == 'vacunador':
                 responsables_filtrados = instance.responsables.filter(created_by=request.user)
-                data['responsables'] = ResponsableSerializer(responsables_filtrados, many=True).data
+                data['responsables'] = ResponsableSerializer(responsables_filtrados, many=True, context=self.context).data
         
         return data
     

@@ -96,8 +96,11 @@ class ResponsableViewSet(APIView):
         if responsable_serializer.is_valid():
             # Asignar created_by si el usuario está autenticado
             if request.user.is_authenticated:
+                print(f"🔍 Usuario autenticado: {request.user.username} (ID: {request.user.id})")
                 responsable = responsable_serializer.save(created_by=request.user)
+                print(f"🔍 Responsable creado con created_by: {responsable.created_by}")
             else:
+                print("⚠️ Usuario no autenticado - responsable sin created_by")
                 responsable = responsable_serializer.save()
             
             # Crear mascotas si se proporcionan
@@ -156,14 +159,19 @@ class ResponsableViewSet(APIView):
                         mascota_data_copy.pop('foto', None)
                         mascota_data_copy.pop('foto_index', None)
                     
+                    print(f"🔍 Datos de mascota antes del serializer: {mascota_data_copy}")
                     mascota_serializer = MascotaSerializer(data=mascota_data_copy)
                     if mascota_serializer.is_valid():
                         # Asignar created_by si el usuario está autenticado
                         if request.user.is_authenticated:
                             mascota = mascota_serializer.save(created_by=request.user)
+                            print(f"🔍 Mascota creada con created_by: {mascota.created_by}")
                         else:
+                            print("⚠️ Usuario no autenticado - mascota sin created_by")
                             mascota = mascota_serializer.save()
-                        mascotas_creadas.append(mascota_serializer.data)
+                        serialized_data = mascota_serializer.data
+                        print(f"🔍 Datos serializados de mascota: {serialized_data}")
+                        mascotas_creadas.append(serialized_data)
                         print(f"✅ Mascota {mascota.nombre} creada exitosamente")
                     else:
                         print(f"❌ Error en mascota serializer: {mascota_serializer.errors}")
@@ -554,6 +562,40 @@ def dashboard_vacunador(request):
         Q(responsable__planilla__vacunadores_adicionales=request.user)
     ).distinct()
     
+    # Calcular estadísticas de zona
+    total_urbano = 0
+    total_rural = 0
+    
+    for responsable in responsables:
+        mascotas_responsable = responsable.mascotas.filter(
+            Q(responsable__planilla__assigned_to=request.user) |
+            Q(responsable__planilla__vacunadores_adicionales=request.user)
+        )
+        for mascota in mascotas_responsable:
+            # Mapear zona del responsable a urbano/rural
+            if responsable.zona == 'barrio':
+                total_urbano += 1
+            elif responsable.zona == 'vereda':
+                total_rural += 1
+            elif responsable.zona == 'centro poblado':
+                # Centro poblado puede ser urbano o rural, por defecto urbano
+                total_urbano += 1
+            else:
+                # Fallback: usar el valor de la planilla si la zona del responsable no está definida
+                if responsable.planilla.urbano_rural == 'urbano':
+                    total_urbano += 1
+                else:
+                    total_rural += 1
+    
+    # Calcular porcentajes
+    total_mascotas_count = mascotas.count()
+    if total_mascotas_count > 0:
+        porcentaje_urbano = round((total_urbano / total_mascotas_count) * 100, 1)
+        porcentaje_rural = round((total_rural / total_mascotas_count) * 100, 1)
+    else:
+        porcentaje_urbano = 0
+        porcentaje_rural = 0
+    
     context = {
         'user_type': 'Vacunador',
         'planillas': planillas,
@@ -561,6 +603,10 @@ def dashboard_vacunador(request):
         'total_responsables': responsables.count(),
         'total_mascotas': mascotas.count(),
         'mascotas_con_tarjeta': mascotas.filter(antecedente_vacunal=True).count(),
+        'total_urbano': total_urbano,
+        'total_rural': total_rural,
+        'porcentaje_urbano': porcentaje_urbano,
+        'porcentaje_rural': porcentaje_rural,
     }
     
     return render(request, 'api/dashboard_usuario.html', context)
@@ -589,6 +635,40 @@ def dashboard_tecnico(request):
         Q(responsable__planilla__tecnicos_adicionales=request.user)
     ).distinct()
     
+    # Calcular estadísticas de zona
+    total_urbano = 0
+    total_rural = 0
+    
+    for responsable in responsables:
+        mascotas_responsable = responsable.mascotas.filter(
+            Q(responsable__planilla__tecnico_asignado=request.user) |
+            Q(responsable__planilla__tecnicos_adicionales=request.user)
+        )
+        for mascota in mascotas_responsable:
+            # Mapear zona del responsable a urbano/rural
+            if responsable.zona == 'barrio':
+                total_urbano += 1
+            elif responsable.zona == 'vereda':
+                total_rural += 1
+            elif responsable.zona == 'centro poblado':
+                # Centro poblado puede ser urbano o rural, por defecto urbano
+                total_urbano += 1
+            else:
+                # Fallback: usar el valor de la planilla si la zona del responsable no está definida
+                if responsable.planilla.urbano_rural == 'urbano':
+                    total_urbano += 1
+                else:
+                    total_rural += 1
+    
+    # Calcular porcentajes
+    total_mascotas_count = mascotas.count()
+    if total_mascotas_count > 0:
+        porcentaje_urbano = round((total_urbano / total_mascotas_count) * 100, 1)
+        porcentaje_rural = round((total_rural / total_mascotas_count) * 100, 1)
+    else:
+        porcentaje_urbano = 0
+        porcentaje_rural = 0
+    
     context = {
         'user_type': 'Técnico',
         'planillas': planillas,
@@ -596,6 +676,10 @@ def dashboard_tecnico(request):
         'total_responsables': responsables.count(),
         'total_mascotas': mascotas.count(),
         'mascotas_con_tarjeta': mascotas.filter(antecedente_vacunal=True).count(),
+        'total_urbano': total_urbano,
+        'total_rural': total_rural,
+        'porcentaje_urbano': porcentaje_urbano,
+        'porcentaje_rural': porcentaje_rural,
     }
     
     return render(request, 'api/dashboard_usuario.html', context)
@@ -612,6 +696,37 @@ def dashboard_administrador(request):
     planillas = Planilla.objects.all()
     responsables = Responsable.objects.all()
     mascotas = Mascota.objects.all()
+    
+    # Calcular estadísticas de zona
+    total_urbano = 0
+    total_rural = 0
+    
+    for responsable in responsables:
+        mascotas_responsable = responsable.mascotas.all()
+        for mascota in mascotas_responsable:
+            # Mapear zona del responsable a urbano/rural
+            if responsable.zona == 'barrio':
+                total_urbano += 1
+            elif responsable.zona == 'vereda':
+                total_rural += 1
+            elif responsable.zona == 'centro poblado':
+                # Centro poblado puede ser urbano o rural, por defecto urbano
+                total_urbano += 1
+            else:
+                # Fallback: usar el valor de la planilla si la zona del responsable no está definida
+                if responsable.planilla.urbano_rural == 'urbano':
+                    total_urbano += 1
+                else:
+                    total_rural += 1
+    
+    # Calcular porcentajes
+    total_mascotas_count = mascotas.count()
+    if total_mascotas_count > 0:
+        porcentaje_urbano = round((total_urbano / total_mascotas_count) * 100, 1)
+        porcentaje_rural = round((total_rural / total_mascotas_count) * 100, 1)
+    else:
+        porcentaje_urbano = 0
+        porcentaje_rural = 0
     
     # Obtener todos los usuarios por tipo con sus relaciones
     vacunadores = Veterinario.objects.filter(tipo_usuario='vacunador').prefetch_related(
@@ -635,6 +750,10 @@ def dashboard_administrador(request):
         'total_responsables': responsables.count(),
         'total_mascotas': mascotas.count(),
         'mascotas_con_tarjeta': mascotas.filter(antecedente_vacunal=True).count(),
+        'total_urbano': total_urbano,
+        'total_rural': total_rural,
+        'porcentaje_urbano': porcentaje_urbano,
+        'porcentaje_rural': porcentaje_rural,
         'vacunadores': vacunadores,
         'tecnicos': tecnicos,
         'administradores': administradores,
