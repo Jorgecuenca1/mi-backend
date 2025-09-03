@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-b0^2d&m3zu$cl6vx!6v*ye5^k&)*nddo$=m!_wxwl15(xwjprz
 DEBUG = True
 
 
-ALLOWED_HOSTS = ['*','corpofuturo.org','seguroslavictoria.co', "https://cuentas.corpofuturo.org", "vacunacion.corpofuturo.org",'cuentasmedicas.seguroslavictoria.co','cuentasmedicas.corpofuturo.org','https://cuentasmedicas.seguroslavictoria.co','https://vacunacion.corpofuturo.org']
+ALLOWED_HOSTS = ['*','corpofuturo.org','seguroslavictoria.co', "https://cuentas.corpofuturo.org", "vacunacion.corpofuturo.org",'cuentasmedicas.seguroslavictoria.co','vacunacion.solucionesfinancierasglobal.com','cuentasmedicas.corpofuturo.org','https://cuentasmedicas.seguroslavictoria.co','https://vacunacion.corpofuturo.org']
 
 
 
@@ -80,6 +80,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5000",      # Flutter Web (ajusta el puerto real)
     "http://localhost:5173",
 "https://vacunacion.corpofuturo.org",
+    "https://vacunacion.solucionesfinancierasglobal.com",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -93,7 +94,8 @@ CSRF_TRUSTED_ORIGINS = [
 "https://cuentasmedicas.seguroslavictoria.co",
     "https://seguroslavictoria.co",
     "https://vacunacion.corpofuturo.org",
-    "http://127.0.0.1:8000"
+    "http://127.0.0.1:8000",
+    "https://vacunacion.solucionesfinancierasglobal.com",
 ]
 TEMPLATES = [
     {
