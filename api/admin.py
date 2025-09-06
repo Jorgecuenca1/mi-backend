@@ -23,8 +23,83 @@ class NoLogMixin:
 class VeterinarioAdmin(NoLogMixin, UserAdmin):
     """Admin para veterinarios (usuarios)."""
     # Agregar tipo_usuario a los campos mostrados en la lista
-    list_display = ('username','tipo_usuario',)
+    list_display = ('id', 'username', 'get_nombre_completo', 'get_municipio', 'get_assigned_to', 'get_vacunadores_adicionales', 'get_tecnicos_adicionales', 'tipo_usuario')
     list_filter = ('tipo_usuario',)
+    
+    def get_nombre_completo(self, obj):
+        """Muestra el nombre completo del usuario"""
+        return f"{obj.first_name} {obj.last_name}" if obj.first_name or obj.last_name else obj.username
+    get_nombre_completo.short_description = 'Nombre'
+    
+    def get_municipio(self, obj):
+        """Muestra los municipios donde el técnico está asignado"""
+        if obj.tipo_usuario == 'tecnico':
+            # Municipios donde es técnico principal
+            municipios_principales = obj.planillas_asignadas.all()
+            # Municipios donde es técnico adicional
+            municipios_adicionales = obj.planillas_como_tecnico_adicional.all()
+            
+            municipios = []
+            for m in municipios_principales:
+                municipios.append(f"{m.nombre} (Principal)")
+            for m in municipios_adicionales:
+                municipios.append(m.nombre)
+            return ", ".join(municipios[:3]) if municipios else "Sin asignar"
+        return "-"
+    get_municipio.short_description = 'Municipio'
+    
+    def get_assigned_to(self, obj):
+        """Muestra el vacunador principal de los municipios donde el técnico trabaja"""
+        if obj.tipo_usuario == 'tecnico':
+            vacunadores = set()
+            # De los municipios donde es técnico principal
+            for planilla in obj.planillas_asignadas.all():
+                if planilla.assigned_to:
+                    vacunadores.add(planilla.assigned_to.username)
+            # De los municipios donde es técnico adicional
+            for planilla in obj.planillas_como_tecnico_adicional.all():
+                if planilla.assigned_to:
+                    vacunadores.add(planilla.assigned_to.username)
+            return ", ".join(list(vacunadores)[:3]) if vacunadores else "Sin asignar"
+        return "-"
+    get_assigned_to.short_description = 'Assigned to'
+    
+    def get_vacunadores_adicionales(self, obj):
+        """Muestra los vacunadores adicionales en los municipios del técnico"""
+        if obj.tipo_usuario == 'tecnico':
+            vacunadores = set()
+            # De los municipios donde es técnico principal
+            for planilla in obj.planillas_asignadas.all():
+                for v in planilla.vacunadores_adicionales.all():
+                    vacunadores.add(v.username)
+            # De los municipios donde es técnico adicional
+            for planilla in obj.planillas_como_tecnico_adicional.all():
+                for v in planilla.vacunadores_adicionales.all():
+                    vacunadores.add(v.username)
+            return ", ".join(list(vacunadores)[:3]) if vacunadores else "-"
+        return "-"
+    get_vacunadores_adicionales.short_description = 'Vacunadores Adicionales'
+    
+    def get_tecnicos_adicionales(self, obj):
+        """Muestra otros técnicos adicionales en los municipios del técnico"""
+        if obj.tipo_usuario == 'tecnico':
+            tecnicos = set()
+            # De los municipios donde es técnico principal
+            for planilla in obj.planillas_asignadas.all():
+                for t in planilla.tecnicos_adicionales.all():
+                    if t.username != obj.username:  # Excluir al técnico actual
+                        tecnicos.add(t.username)
+            # De los municipios donde es técnico adicional
+            for planilla in obj.planillas_como_tecnico_adicional.all():
+                for t in planilla.tecnicos_adicionales.all():
+                    if t.username != obj.username:  # Excluir al técnico actual
+                        tecnicos.add(t.username)
+                # También incluir el técnico principal si no es él mismo
+                if planilla.tecnico_asignado and planilla.tecnico_asignado.username != obj.username:
+                    tecnicos.add(planilla.tecnico_asignado.username)
+            return ", ".join(list(tecnicos)[:3]) if tecnicos else "-"
+        return "-"
+    get_tecnicos_adicionales.short_description = 'Técnicos Adicionales'
     
     # Personalizar los fieldsets para incluir tipo_usuario
     fieldsets = UserAdmin.fieldsets + (
@@ -43,7 +118,7 @@ class VeterinarioAdmin(NoLogMixin, UserAdmin):
 @admin.register(Planilla)
 class PlanillaAdmin(NoLogMixin, admin.ModelAdmin):
     """Admin para municipios con asignaciones múltiples."""
-    list_display = ('id', 'nombre', 'municipio', 'assigned_to', 'get_vacunadores_adicionales', 'get_tecnicos_adicionales', 'creada')
+    list_display = ('id', 'nombre', 'municipio', 'assigned_to', 'tecnico_asignado', 'get_vacunadores_adicionales', 'get_tecnicos_adicionales', 'creada')
     list_filter = ('assigned_to', 'tecnico_asignado', 'urbano_rural', 'creada')
     search_fields = ('nombre', 'municipio', 'assigned_to__username', 'tecnico_asignado__username')
     ordering = ('-creada',)

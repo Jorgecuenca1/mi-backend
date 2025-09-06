@@ -628,7 +628,7 @@ def dashboard_tecnico(request):
     responsables = Responsable.objects.filter(
         Q(planilla__tecnico_asignado=request.user) |
         Q(planilla__tecnicos_adicionales=request.user)
-    ).distinct()
+    ).distinct().select_related('created_by', 'planilla').order_by('-creado')
     
     mascotas = Mascota.objects.filter(
         Q(responsable__planilla__tecnico_asignado=request.user) |
@@ -669,6 +669,80 @@ def dashboard_tecnico(request):
         porcentaje_urbano = 0
         porcentaje_rural = 0
     
+    # Estadísticas de mascotas por día
+    from django.db.models import Count, Min
+    from datetime import datetime, timedelta, date
+    
+    # Obtener la fecha más antigua de mascotas registradas
+    primera_mascota = mascotas.aggregate(Min('creado'))['creado__min']
+    if primera_mascota:
+        fecha_inicio = primera_mascota.date() if hasattr(primera_mascota, 'date') else primera_mascota
+    else:
+        fecha_inicio = datetime.now().date()
+    
+    fecha_fin = datetime.now().date()
+    
+    # Crear lista de todos los días desde el inicio hasta hoy
+    dias_completos = []
+    fecha_actual = fecha_inicio
+    while fecha_actual <= fecha_fin:
+        dias_completos.append(fecha_actual)
+        fecha_actual += timedelta(days=1)
+    
+    # Obtener datos de mascotas por día
+    mascotas_query = mascotas.extra(
+        select={'dia': 'date(api_mascota.creado)'}
+    ).values('dia').annotate(cantidad=Count('id'))
+    
+    # Crear diccionario con los datos
+    mascotas_dict = {item['dia']: item['cantidad'] for item in mascotas_query}
+    
+    # Crear lista completa con todos los días
+    mascotas_por_dia = []
+    for dia in dias_completos:
+        mascotas_por_dia.append({
+            'dia': dia,
+            'cantidad': mascotas_dict.get(str(dia), 0)
+        })
+    
+    # Reporte de vacunación por vacunador por día
+    vacunadores_en_municipios = Veterinario.objects.filter(
+        Q(planillas__in=planillas) |  # Vacunadores principales
+        Q(planillas_como_vacunador_adicional__in=planillas),  # Vacunadores adicionales
+        tipo_usuario='vacunador'
+    ).distinct()
+    
+    reporte_vacunadores = []
+    for vacunador in vacunadores_en_municipios:
+        # Contar TODAS las mascotas creadas por este vacunador
+        mascotas_vacunador_query = Mascota.objects.filter(
+            created_by=vacunador,
+            responsable__planilla__in=planillas
+        ).extra(select={'dia': 'date(api_mascota.creado)'}).values('dia').annotate(cantidad=Count('id'))
+        
+        # Crear diccionario con los datos del vacunador
+        vacunador_dict = {item['dia']: item['cantidad'] for item in mascotas_vacunador_query}
+        
+        # Crear lista completa con todos los días para este vacunador
+        mascotas_por_dia_vacunador = []
+        for dia in dias_completos:
+            mascotas_por_dia_vacunador.append({
+                'dia': dia,
+                'cantidad': vacunador_dict.get(str(dia), 0)
+            })
+        
+        nombre_completo = f"{vacunador.first_name} {vacunador.last_name}".strip()
+        
+        reporte_vacunadores.append({
+            'vacunador': vacunador,
+            'nombre_completo': nombre_completo,
+            'mascotas_por_dia': mascotas_por_dia_vacunador,
+            'total': sum(m['cantidad'] for m in mascotas_por_dia_vacunador)
+        })
+    
+    # Responsables recientes con información del vacunador - mostrar todos, no solo 10
+    responsables_recientes = responsables.select_related('created_by', 'planilla')  # Mostrar todos los responsables
+    
     context = {
         'user_type': 'Técnico',
         'planillas': planillas,
@@ -680,6 +754,10 @@ def dashboard_tecnico(request):
         'total_rural': total_rural,
         'porcentaje_urbano': porcentaje_urbano,
         'porcentaje_rural': porcentaje_rural,
+        'mascotas_por_dia': list(mascotas_por_dia),
+        'reporte_vacunadores': reporte_vacunadores,
+        'responsables_recientes': responsables_recientes,
+        'vacunadores_en_municipios': vacunadores_en_municipios,
     }
     
     return render(request, 'api/dashboard_usuario.html', context)
@@ -694,7 +772,7 @@ def dashboard_administrador(request):
     
     # Administradores ven todo
     planillas = Planilla.objects.all()
-    responsables = Responsable.objects.all()
+    responsables = Responsable.objects.all().select_related('created_by', 'planilla').order_by('-creado')
     mascotas = Mascota.objects.all()
     
     # Calcular estadísticas de zona
@@ -743,6 +821,9 @@ def dashboard_administrador(request):
     
     administradores = Veterinario.objects.filter(tipo_usuario='administrador').order_by('username')
     
+    # Responsables recientes con información del vacunador
+    responsables_recientes = responsables[:10]  # Últimos 10 responsables
+    
     context = {
         'user_type': 'Administrador',
         'planillas': planillas,
@@ -760,6 +841,7 @@ def dashboard_administrador(request):
         'total_vacunadores': vacunadores.count(),
         'total_tecnicos': tecnicos.count(),
         'total_administradores': administradores.count(),
+        'responsables_recientes': responsables_recientes,
     }
     
     return render(request, 'api/dashboard_usuario.html', context)

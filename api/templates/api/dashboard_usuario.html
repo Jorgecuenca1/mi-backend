@@ -315,7 +315,61 @@
         <div class="data-section">
             <div class="section-header">👥 Responsables Recientes</div>
             <div class="table-container">
-                {% if planillas %}
+                {% if user_type == 'Técnico' and responsables_recientes %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Teléfono</th>
+                            <th>Finca</th>
+                            <th>Municipio</th>
+                            <th>Vacunador</th>
+                            <th>Mascotas</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for responsable in responsables_recientes %}
+                        <tr>
+                            <td><strong>{{ responsable.nombre }}</strong></td>
+                            <td>{{ responsable.telefono }}</td>
+                            <td>{{ responsable.finca }}</td>
+                            <td>{{ responsable.planilla.nombre }}</td>
+                            <td>{{ responsable.created_by.username|default:"-" }}</td>
+                            <td>{{ responsable.mascotas.count }}</td>
+                            <td>{{ responsable.creado|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% elif user_type == 'Administrador' and responsables_recientes %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Teléfono</th>
+                            <th>Finca</th>
+                            <th>Municipio</th>
+                            <th>Vacunador</th>
+                            <th>Mascotas</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for responsable in responsables_recientes %}
+                        <tr>
+                            <td><strong>{{ responsable.nombre }}</strong></td>
+                            <td>{{ responsable.telefono }}</td>
+                            <td>{{ responsable.finca }}</td>
+                            <td>{{ responsable.planilla.nombre }}</td>
+                            <td>{{ responsable.created_by.username|default:"-" }}</td>
+                            <td>{{ responsable.mascotas.count }}</td>
+                            <td>{{ responsable.creado|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% elif planillas %}
                 <table>
                     <thead>
                         <tr>
@@ -349,6 +403,94 @@
                 {% endif %}
             </div>
         </div>
+
+        {% if user_type == 'Técnico' %}
+        <!-- Estadísticas de Mascotas por Día (Solo para Técnicos) -->
+        <div class="data-section">
+            <div class="section-header">📊 Mascotas Agregadas por Día (Historial Completo)</div>
+            <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                {% if mascotas_por_dia %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Cantidad de Mascotas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dia in mascotas_por_dia %}
+                        <tr>
+                            <td><strong>{{ dia.dia|date:"d/m/Y" }}</strong></td>
+                            <td>
+                                {% if dia.cantidad > 0 %}
+                                    <span style="color: #2e7d32; font-weight: bold;">{{ dia.cantidad }}</span>
+                                {% else %}
+                                    <span style="color: #999;">0</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="no-data">
+                    📊 No hay datos de mascotas registradas.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Reporte de Vacunación por Vacunador (Solo para Técnicos) -->
+        {% if reporte_vacunadores %}
+            {% for reporte in reporte_vacunadores %}
+            <div class="data-section">
+                <div class="section-header">
+                    💉 Reporte de Vacunación - {{ reporte.vacunador.username }}
+                    {% if reporte.nombre_completo %}
+                        ({{ reporte.nombre_completo }})
+                    {% endif %}
+                </div>
+                <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Mascotas Vacunadas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dia in reporte.mascotas_por_dia %}
+                            <tr>
+                                <td><strong>{{ dia.dia|date:"d/m/Y" }}</strong></td>
+                                <td>
+                                    {% if dia.cantidad > 0 %}
+                                        <span style="color: #2e7d32; font-weight: bold;">{{ dia.cantidad }}</span>
+                                    {% else %}
+                                        <span style="color: #999;">0</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            <tr style="background-color: #f5f5f5;">
+                                <td><strong>TOTAL</strong></td>
+                                <td><strong style="color: #1976d2;">{{ reporte.total }}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="data-section">
+                <div class="section-header">💉 Reporte de Vacunación por Vacunador</div>
+                <div class="table-container">
+                    <div class="no-data">
+                        No hay vacunadores asignados a estos municipios.
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        {% endif %}
 
         <!-- Sección de Usuarios (Solo para Administradores) -->
         {% if user_type == 'Administrador' %}
@@ -391,12 +533,10 @@
                             <tr>
                                 <td><strong>{{ vacunador.username }}</strong></td>
                                 <td>
-                                    {% with municipios_principales=vacunador.planillas.all
-                                    municipios_adicionales=vacunador.planillas_como_vacunador_adicional.all %}
+                                    {% with municipios_principales=vacunador.planillas.all municipios_adicionales=vacunador.planillas_como_vacunador_adicional.all %}
                                     {% if municipios_principales or municipios_adicionales %}
                                     {% for municipio in municipios_principales %}
-                                    <span class="badge" style="background: #c8e6c9; color: #2e7d32;">{{ municipio.nombre
-                                        }} (Principal)</span>
+                                    <span class="badge" style="background: #c8e6c9; color: #2e7d32;">{{ municipio.nombre }} (Principal)</span>
                                     {% endfor %}
                                     {% for municipio in municipios_adicionales %}
                                     <span class="badge">{{ municipio.nombre }}</span>
@@ -445,12 +585,10 @@
                             <tr>
                                 <td><strong>{{ tecnico.username }}</strong></td>
                                 <td>
-                                    {% with municipios_principales=tecnico.planillas_asignadas.all
-                                    municipios_adicionales=tecnico.planillas_como_tecnico_adicional.all %}
+                                    {% with municipios_principales=tecnico.planillas_asignadas.all municipios_adicionales=tecnico.planillas_como_tecnico_adicional.all %}
                                     {% if municipios_principales or municipios_adicionales %}
                                     {% for municipio in municipios_principales %}
-                                    <span class="badge" style="background: #c8e6c9; color: #2e7d32;">{{ municipio.nombre
-                                        }} (Principal)</span>
+                                    <span class="badge" style="background: #c8e6c9; color: #2e7d32;">{{ municipio.nombre }} (Principal)</span>
                                     {% endfor %}
                                     {% for municipio in municipios_adicionales %}
                                     <span class="badge">{{ municipio.nombre }}</span>
