@@ -28,5 +28,5 @@ urlpatterns = [
     path('responsables/seleccionar/', views.elegir_planilla, name='elegir_planilla'),
     path('planillas/<int:planilla_id>/responsable/nuevo/',
      crear_responsable_con_mascotas,
-     name='crear_responsable')
+     name='crear_responsable'),
 ]

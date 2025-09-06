@@ -4,12 +4,16 @@ from rest_framework.authtoken.views import obtain_auth_token
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.conf import settings
 from django.conf.urls.static import static
-from api.views import landing_page, reportes_view, login_view, logout_view, dashboard_principal
+from api.views import landing_page, reportes_view, login_view, logout_view, dashboard_principal, mapa_mascotas, api_mascotas_georef
 
 urlpatterns = [
     # Landing page en la raíz
     path('', landing_page, name='landing'),
     path('reportes/', reportes_view, name='reportes'),
+    
+    # Mapa de mascotas
+    path('mapa/', mapa_mascotas, name='mapa_mascotas'),
+    path('api/mascotas-georef/', api_mascotas_georef, name='api_mascotas_georef'),
     
     # Autenticación y Dashboard
     path('dashboard/', dashboard_principal, name='dashboard_principal'),

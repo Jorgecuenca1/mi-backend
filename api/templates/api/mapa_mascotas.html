@@ -1,0 +1,586 @@
+{% extends 'api/base.html' %}
+{% load static %}
+
+{% block title %}Mapa de Mascotas - Sistema de Vacunación{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+<style>
+    #map {
+        height: 600px;
+        width: 100%;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .map-container {
+        position: relative;
+        padding: 20px;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .map-controls {
+        position: absolute;
+        top: 30px;
+        right: 30px;
+        z-index: 1000;
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        max-width: 250px;
+    }
+    
+    .map-stats {
+        position: absolute;
+        top: 30px;
+        left: 30px;
+        z-index: 1000;
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+    
+    .filter-section {
+        margin-bottom: 15px;
+    }
+    
+    .filter-section h5 {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #333;
+    }
+    
+    .filter-checkbox {
+        margin-bottom: 5px;
+    }
+    
+    .filter-checkbox input {
+        margin-right: 5px;
+    }
+    
+    .mascota-popup {
+        width: 280px;
+    }
+    
+    .mascota-popup h5 {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+        font-size: 18px;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 5px;
+    }
+    
+    .mascota-popup .info-row {
+        margin: 5px 0;
+        display: flex;
+        align-items: center;
+    }
+    
+    .mascota-popup .info-label {
+        font-weight: 600;
+        margin-right: 5px;
+        color: #555;
+        min-width: 80px;
+    }
+    
+    .mascota-popup .info-value {
+        color: #333;
+    }
+    
+    .mascota-popup .section-title {
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 10px 0 5px 0;
+        padding-top: 10px;
+        border-top: 1px solid #e0e0e0;
+    }
+    
+    .mascota-popup img {
+        width: 100%;
+        max-height: 150px;
+        object-fit: cover;
+        border-radius: 5px;
+        margin-top: 10px;
+    }
+    
+    .badge {
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .badge-perro {
+        background-color: #ffeaa7;
+        color: #d63031;
+    }
+    
+    .badge-gato {
+        background-color: #dfe6e9;
+        color: #2d3436;
+    }
+    
+    .badge-esterilizado {
+        background-color: #55efc4;
+        color: #00b894;
+    }
+    
+    .badge-vacunado {
+        background-color: #74b9ff;
+        color: #0984e3;
+    }
+    
+    .loading-spinner {
+        text-align: center;
+        padding: 50px;
+    }
+    
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .stats-number {
+        font-size: 32px;
+        font-weight: bold;
+    }
+    
+    .stats-label {
+        font-size: 14px;
+        opacity: 0.9;
+    }
+    
+    .legend {
+        background: white;
+        padding: 10px;
+        border-radius: 5px;
+        line-height: 1.5;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
+    }
+    
+    .legend-icon {
+        width: 20px;
+        height: 20px;
+        margin-right: 8px;
+        border-radius: 50%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2><i class="fas fa-map-marked-alt"></i> Mapa de Mascotas Georreferenciadas</h2>
+                <a href="{% url 'dashboard_principal' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver al Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-3 mb-4">
+            <div class="stats-card">
+                <div class="stats-number" id="total-mascotas">0</div>
+                <div class="stats-label">Mascotas en el Mapa</div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-filter"></i> Filtros</h5>
+                </div>
+                <div class="card-body">
+                    <div class="filter-section">
+                        <h5>Tipo de Mascota</h5>
+                        <div class="filter-checkbox">
+                            <label>
+                                <input type="checkbox" id="filter-perros" checked> 
+                                <i class="fas fa-dog"></i> Perros
+                            </label>
+                        </div>
+                        <div class="filter-checkbox">
+                            <label>
+                                <input type="checkbox" id="filter-gatos" checked> 
+                                <i class="fas fa-cat"></i> Gatos
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-section">
+                        <h5>Estado</h5>
+                        <div class="filter-checkbox">
+                            <label>
+                                <input type="checkbox" id="filter-esterilizado" checked> 
+                                <i class="fas fa-cut"></i> Esterilizados
+                            </label>
+                        </div>
+                        <div class="filter-checkbox">
+                            <label>
+                                <input type="checkbox" id="filter-no-esterilizado" checked> 
+                                <i class="fas fa-times-circle"></i> No Esterilizados
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-section">
+                        <h5>Antecedente Vacunal</h5>
+                        <div class="filter-checkbox">
+                            <label>
+                                <input type="checkbox" id="filter-con-tarjeta" checked> 
+                                <i class="fas fa-id-card"></i> Con Tarjeta
+                            </label>
+                        </div>
+                        <div class="filter-checkbox">
+                            <label>
+                                <input type="checkbox" id="filter-sin-tarjeta" checked> 
+                                <i class="fas fa-file-medical"></i> Sin Tarjeta
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-section">
+                        <h5>Zona</h5>
+                        <div class="filter-checkbox">
+                            <label>
+                                <input type="checkbox" id="filter-urbano" checked> 
+                                <i class="fas fa-city"></i> Urbano
+                            </label>
+                        </div>
+                        <div class="filter-checkbox">
+                            <label>
+                                <input type="checkbox" id="filter-rural" checked> 
+                                <i class="fas fa-mountain"></i> Rural
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary btn-sm w-100 mt-3" onclick="aplicarFiltros()">
+                        <i class="fas fa-sync"></i> Aplicar Filtros
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Leyenda</h5>
+                </div>
+                <div class="card-body legend">
+                    <div class="legend-item">
+                        <div class="legend-icon" style="background-color: #ff6b6b;"></div>
+                        <span>Perros</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon" style="background-color: #4ecdc4;"></div>
+                        <span>Gatos</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon" style="background-color: #95e1d3;"></div>
+                        <span>Esterilizados</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon" style="background-color: #ffd93d;"></div>
+                        <span>Con Tarjeta Previa</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-9">
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="loading-spinner" id="loading" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Cargando...</span>
+                    </div>
+                    <p class="mt-2">Cargando mascotas georreferenciadas...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+<script>
+    let map;
+    let markersLayer;
+    let allMascotas = [];
+    let markers = [];
+    
+    // Inicializar el mapa
+    function initMap() {
+        // Coordenadas de Colombia (centrado)
+        map = L.map('map').setView([4.5709, -74.2973], 6);
+        
+        // Agregar capa de OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Crear grupo de marcadores con clustering
+        markersLayer = L.markerClusterGroup({
+            chunkedLoading: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true,
+            spiderfyOnMaxZoom: true,
+            removeOutsideVisibleBounds: true,
+            maxClusterRadius: 50
+        });
+        
+        map.addLayer(markersLayer);
+        
+        // Cargar datos de mascotas
+        cargarMascotas();
+    }
+    
+    // Función para crear icono personalizado
+    function crearIcono(mascota) {
+        let color = mascota.tipo === 'Perro' ? '#ff6b6b' : '#4ecdc4';
+        if (mascota.esterilizado) {
+            color = '#95e1d3';
+        }
+        if (mascota.antecedente_vacunal) {
+            color = '#ffd93d';
+        }
+        
+        return L.divIcon({
+            html: `
+                <div style="background-color: ${color}; width: 30px; height: 30px; border-radius: 50%; 
+                           border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                           display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-${mascota.tipo === 'Perro' ? 'dog' : 'cat'}" 
+                       style="color: white; font-size: 14px;"></i>
+                </div>
+            `,
+            className: 'custom-marker',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15],
+            popupAnchor: [0, -15]
+        });
+    }
+    
+    // Función para crear contenido del popup
+    function crearPopupContent(mascota) {
+        let html = `
+            <div class="mascota-popup">
+                <h5>
+                    <i class="fas fa-${mascota.tipo === 'Perro' ? 'dog' : 'cat'}"></i> 
+                    ${mascota.nombre}
+                </h5>
+                
+                <div class="info-row">
+                    <span class="badge badge-${mascota.tipo === 'Perro' ? 'perro' : 'gato'}">${mascota.tipo}</span>
+                    ${mascota.esterilizado ? '<span class="badge badge-esterilizado ml-2">Esterilizado</span>' : ''}
+                    ${mascota.antecedente_vacunal ? '<span class="badge badge-vacunado ml-2">Con Tarjeta</span>' : ''}
+                </div>
+                
+                <div class="info-row mt-2">
+                    <span class="info-label">Raza:</span>
+                    <span class="info-value">${mascota.raza}</span>
+                </div>
+                
+                <div class="info-row">
+                    <span class="info-label">Color:</span>
+                    <span class="info-value">${mascota.color}</span>
+                </div>
+                
+                <div class="section-title">Responsable</div>
+                <div class="info-row">
+                    <span class="info-label">Nombre:</span>
+                    <span class="info-value">${mascota.responsable.nombre}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Teléfono:</span>
+                    <span class="info-value">${mascota.responsable.telefono}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Finca:</span>
+                    <span class="info-value">${mascota.responsable.finca}</span>
+                </div>
+                
+                <div class="section-title">Ubicación</div>
+                <div class="info-row">
+                    <span class="info-label">Municipio:</span>
+                    <span class="info-value">${mascota.municipio}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Zona:</span>
+                    <span class="info-value">${mascota.responsable.zona} - ${mascota.zona_tipo}</span>
+                </div>
+                
+                <div class="info-row mt-2">
+                    <span class="info-label">Vacunador:</span>
+                    <span class="info-value">${mascota.vacunador}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Fecha:</span>
+                    <span class="info-value">${mascota.fecha_registro}</span>
+                </div>
+                
+                ${mascota.foto_url ? `<img src="${mascota.foto_url}" alt="${mascota.nombre}">` : ''}
+            </div>
+        `;
+        return html;
+    }
+    
+    // Función para obtener el CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Cargar mascotas desde la API
+    function cargarMascotas() {
+        console.log('Iniciando carga de mascotas...');
+        document.getElementById('loading').style.display = 'block';
+        
+        fetch('/api/mascotas-georef/', {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin'
+        })
+            .then(response => {
+                console.log('Respuesta recibida:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Datos recibidos:', data);
+                allMascotas = data.mascotas || [];
+                console.log(`Total de mascotas: ${allMascotas.length}`);
+                
+                document.getElementById('total-mascotas').textContent = data.total || 0;
+                
+                if (allMascotas.length > 0) {
+                    mostrarMascotas(allMascotas);
+                    
+                    // Ajustar vista del mapa a los marcadores
+                    setTimeout(() => {
+                        if (markersLayer.getLayers().length > 0) {
+                            map.fitBounds(markersLayer.getBounds(), { padding: [50, 50] });
+                        }
+                    }, 500);
+                } else {
+                    console.log('No hay mascotas con coordenadas');
+                    alert('No se encontraron mascotas con georreferenciación');
+                }
+                
+                document.getElementById('loading').style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error cargando mascotas:', error);
+                document.getElementById('loading').style.display = 'none';
+                alert('Error al cargar las mascotas: ' + error.message);
+            });
+    }
+    
+    // Mostrar mascotas en el mapa
+    function mostrarMascotas(mascotas) {
+        console.log(`Mostrando ${mascotas.length} mascotas en el mapa`);
+        
+        // Limpiar marcadores anteriores
+        markersLayer.clearLayers();
+        markers = [];
+        
+        mascotas.forEach((mascota, index) => {
+            console.log(`Mascota ${index + 1}: ${mascota.nombre} en [${mascota.latitud}, ${mascota.longitud}]`);
+            
+            try {
+                const marker = L.marker([mascota.latitud, mascota.longitud], {
+                    icon: crearIcono(mascota)
+                });
+                
+                marker.bindPopup(crearPopupContent(mascota), {
+                    maxWidth: 300,
+                    className: 'custom-popup'
+                });
+                
+                markers.push(marker);
+                markersLayer.addLayer(marker);
+            } catch (error) {
+                console.error(`Error agregando marcador para ${mascota.nombre}:`, error);
+            }
+        });
+        
+        console.log(`Total de marcadores agregados: ${markers.length}`);
+        document.getElementById('total-mascotas').textContent = mascotas.length;
+        
+        // Verificar que los marcadores se agregaron
+        console.log('Layers en markersLayer:', markersLayer.getLayers().length);
+    }
+    
+    // Aplicar filtros
+    function aplicarFiltros() {
+        const filtroPerros = document.getElementById('filter-perros').checked;
+        const filtroGatos = document.getElementById('filter-gatos').checked;
+        const filtroEsterilizado = document.getElementById('filter-esterilizado').checked;
+        const filtroNoEsterilizado = document.getElementById('filter-no-esterilizado').checked;
+        const filtroConTarjeta = document.getElementById('filter-con-tarjeta').checked;
+        const filtroSinTarjeta = document.getElementById('filter-sin-tarjeta').checked;
+        const filtroUrbano = document.getElementById('filter-urbano').checked;
+        const filtroRural = document.getElementById('filter-rural').checked;
+        
+        const mascotasFiltradas = allMascotas.filter(mascota => {
+            // Filtro por tipo
+            if (!filtroPerros && mascota.tipo === 'Perro') return false;
+            if (!filtroGatos && mascota.tipo === 'Gato') return false;
+            
+            // Filtro por esterilización
+            if (!filtroEsterilizado && mascota.esterilizado) return false;
+            if (!filtroNoEsterilizado && !mascota.esterilizado) return false;
+            
+            // Filtro por antecedente vacunal
+            if (!filtroConTarjeta && mascota.antecedente_vacunal) return false;
+            if (!filtroSinTarjeta && !mascota.antecedente_vacunal) return false;
+            
+            // Filtro por zona
+            if (!filtroUrbano && mascota.zona_tipo === 'urbano') return false;
+            if (!filtroRural && mascota.zona_tipo === 'rural') return false;
+            
+            return true;
+        });
+        
+        mostrarMascotas(mascotasFiltradas);
+    }
+    
+    // Inicializar cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', function() {
+        initMap();
+    });
+</script>
+{% endblock %}

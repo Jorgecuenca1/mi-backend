@@ -858,4 +858,80 @@ def dashboard_principal(request):
         return redirect('dashboard_tecnico')
     else:
         messages.error(request, 'Tipo de usuario no válido.')
-    return redirect('login') 
+    return redirect('login')
+
+
+@login_required
+def mapa_mascotas(request):
+    """Vista para mostrar el mapa con las mascotas georreferenciadas"""
+    return render(request, 'api/mapa_mascotas.html')
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])  # Cambiado temporalmente para permitir acceso
+def api_mascotas_georef(request):
+    """API endpoint para obtener mascotas con georreferenciación"""
+    user = request.user
+    
+    # Filtrar mascotas según el rol del usuario
+    if not user.is_authenticated:
+        # Si no está autenticado, mostrar todas las mascotas con georreferenciación
+        mascotas = Mascota.objects.filter(
+            latitud__isnull=False,
+            longitud__isnull=False
+        ).select_related('responsable', 'responsable__planilla', 'created_by')
+    elif user.tipo_usuario == 'administrador':
+        # Administradores ven todas las mascotas con georreferenciación
+        mascotas = Mascota.objects.filter(
+            latitud__isnull=False,
+            longitud__isnull=False
+        ).select_related('responsable', 'responsable__planilla', 'created_by')
+    elif user.tipo_usuario == 'tecnico':
+        # Técnicos ven las mascotas de sus municipios asignados
+        mascotas = Mascota.objects.filter(
+            Q(responsable__planilla__tecnico_asignado=user) |
+            Q(responsable__planilla__tecnicos_adicionales=user),
+            latitud__isnull=False,
+            longitud__isnull=False
+        ).select_related('responsable', 'responsable__planilla', 'created_by').distinct()
+    elif user.tipo_usuario == 'vacunador':
+        # Vacunadores ven solo las mascotas que ellos crearon
+        mascotas = Mascota.objects.filter(
+            created_by=user,
+            latitud__isnull=False,
+            longitud__isnull=False
+        ).select_related('responsable', 'responsable__planilla')
+    else:
+        mascotas = Mascota.objects.none()
+    
+    # Preparar datos para el mapa
+    mascotas_data = []
+    for mascota in mascotas:
+        mascotas_data.append({
+            'id': mascota.id,
+            'nombre': mascota.nombre,
+            'tipo': mascota.get_tipo_display(),
+            'raza': mascota.raza,
+            'color': mascota.color,
+            'esterilizado': mascota.esterilizado,
+            'antecedente_vacunal': mascota.antecedente_vacunal,
+            'latitud': float(mascota.latitud),
+            'longitud': float(mascota.longitud),
+            'responsable': {
+                'nombre': mascota.responsable.nombre,
+                'telefono': mascota.responsable.telefono,
+                'finca': mascota.responsable.finca,
+                'zona': mascota.responsable.zona,
+                'nombre_zona': mascota.responsable.nombre_zona,
+            },
+            'municipio': mascota.responsable.planilla.municipio,
+            'zona_tipo': mascota.responsable.planilla.urbano_rural,
+            'vacunador': mascota.created_by.username if mascota.created_by else 'N/A',
+            'fecha_registro': mascota.creado.strftime('%Y-%m-%d %H:%M'),
+            'foto_url': mascota.foto.url if mascota.foto else None
+        })
+    
+    return Response({
+        'mascotas': mascotas_data,
+        'total': len(mascotas_data)
+    }) 

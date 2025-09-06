@@ -219,6 +219,42 @@
             </p>
             {% endif %}
         </div>
+        
+        <!-- Botones de acción rápida -->
+        <div style="margin: 2rem 0; display: flex; gap: 1rem; flex-wrap: wrap;">
+            <a href="{% url 'mapa_mascotas' %}" style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: 10px;
+                text-decoration: none;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-weight: 600;
+                transition: transform 0.3s, box-shadow 0.3s;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.4)';" 
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(102, 126, 234, 0.3)';">
+                🗺️ Ver Mapa de Mascotas
+            </a>
+            <a href="{% url 'reportes' %}" style="
+                background: linear-gradient(135deg, #48c9b0 0%, #27ae60 100%);
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: 10px;
+                text-decoration: none;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-weight: 600;
+                transition: transform 0.3s, box-shadow 0.3s;
+                box-shadow: 0 4px 15px rgba(72, 201, 176, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(72, 201, 176, 0.4)';" 
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(72, 201, 176, 0.3)';">
+                📊 Ver Reportes
+            </a>
+        </div>
 
         <div class="stats-grid">
             <div class="stat-card">
