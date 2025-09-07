@@ -31,8 +31,7 @@ services:
       - '443:443'
     environment:
       DOMAINS: 'vacunacion.corpofuturo.org -> http://backend:8002'
-      STAGE: 'staging'  # Cambiar a 'production' cuando todo funcione bien
-      FORCE_RENEW: 'true'
+      STAGE: 'production'  # Cambiar a 'production' cuando todo funcione bien
       CLIENT_MAX_BODY_SIZE: 5M
     volumes:
       - https-portal-data:/var/lib/https-portal

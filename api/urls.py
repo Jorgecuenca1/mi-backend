@@ -29,4 +29,8 @@ urlpatterns = [
     path('planillas/<int:planilla_id>/responsable/nuevo/',
      crear_responsable_con_mascotas,
      name='crear_responsable'),
+    
+    # URLs para registro de pérdidas
+    path('perdidas/', views.registro_perdidas_list, name='registro_perdidas_list'),
+    path('perdidas/estadisticas/', views.estadisticas_perdidas, name='estadisticas_perdidas'),
 ]

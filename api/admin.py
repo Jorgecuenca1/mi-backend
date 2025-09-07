@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Veterinario, Planilla, Mascota, Responsable
+from .models import Veterinario, Planilla, Mascota, Responsable, RegistroPerdidas
 
 class NoLogMixin:
     """Mixin para deshabilitar el logging del admin y evitar errores de foreign key"""
@@ -199,6 +199,34 @@ class MascotaAdmin(NoLogMixin, admin.ModelAdmin):
         }),
         ('Información del Sistema', {
             'fields': ('created_by', 'creado'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(RegistroPerdidas)
+class RegistroPerdidasAdmin(NoLogMixin, admin.ModelAdmin):
+    """Admin para registros de pérdidas de vacunas."""
+    list_display = ('id', 'cantidad', 'lote_vacuna', 'registrado_por', 'fecha_perdida', 'fecha_registro', 'sincronizado')
+    list_filter = ('registrado_por', 'lote_vacuna', 'fecha_perdida', 'sincronizado')
+    search_fields = ('lote_vacuna', 'motivo', 'registrado_por__username')
+    ordering = ('-fecha_registro',)
+    readonly_fields = ('fecha_registro', 'uuid_local')
+    
+    fieldsets = (
+        ('Información de la Pérdida', {
+            'fields': ('cantidad', 'lote_vacuna', 'motivo', 'fecha_perdida')
+        }),
+        ('Ubicación', {
+            'fields': ('latitud', 'longitud'),
+            'classes': ('collapse',)
+        }),
+        ('Evidencia', {
+            'fields': ('foto',),
+            'classes': ('collapse',)
+        }),
+        ('Información del Sistema', {
+            'fields': ('registrado_por', 'fecha_registro', 'sincronizado', 'uuid_local'),
             'classes': ('collapse',)
         }),
     )

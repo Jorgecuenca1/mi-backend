@@ -7,8 +7,9 @@ from django.shortcuts import render
 from django.db.models import Count, Q
 import json
 import base64
+from datetime import datetime
 from django.core.files.base import ContentFile
-from .models import Planilla, Mascota, Responsable, Veterinario
+from .models import Planilla, Mascota, Responsable, Veterinario, RegistroPerdidas
 from .serializers import PlanillaSerializer, MascotaSerializer, ResponsableSerializer
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import ResponsableForm, MascotaFormSet
@@ -96,32 +97,32 @@ class ResponsableViewSet(APIView):
         if responsable_serializer.is_valid():
             # Asignar created_by si el usuario está autenticado
             if request.user.is_authenticated:
-                print(f"🔍 Usuario autenticado: {request.user.username} (ID: {request.user.id})")
+                print(f"Usuario autenticado: {request.user.username} (ID: {request.user.id})")
                 responsable = responsable_serializer.save(created_by=request.user)
-                print(f"🔍 Responsable creado con created_by: {responsable.created_by}")
+                print(f"Responsable creado con created_by: {responsable.created_by}")
             else:
-                print("⚠️ Usuario no autenticado - responsable sin created_by")
+                print("Usuario no autenticado - responsable sin created_by")
                 responsable = responsable_serializer.save()
             
             # Crear mascotas si se proporcionan
             mascotas_data = request.data.get('mascotas', [])
             mascotas_creadas = []
             
-            print(f"🔍 DEBUG: mascotas_data tipo: {type(mascotas_data)}")
-            print(f"🔍 DEBUG: mascotas_data contenido (primeros 200 chars): {str(mascotas_data)[:200]}")
+            print(f"DEBUG: mascotas_data tipo: {type(mascotas_data)}")
+            print(f"DEBUG: mascotas_data contenido (primeros 200 chars): {str(mascotas_data)[:200]}")
             
             # Si mascotas_data es un string, parsearlo como JSON
             if isinstance(mascotas_data, str):
                 try:
                     mascotas_data = json.loads(mascotas_data)
-                    print(f"✅ JSON parseado exitosamente. Tipo: {type(mascotas_data)}, Items: {len(mascotas_data)}")
+                    print(f"JSON parseado exitosamente. Tipo: {type(mascotas_data)}, Items: {len(mascotas_data)}")
                 except json.JSONDecodeError:
-                    print(f"❌ Error parseando JSON de mascotas: {mascotas_data}")
+                    print(f"Error parseando JSON de mascotas: {mascotas_data}")
                     mascotas_data = []
             
             # Procesar cada mascota
             for i, mascota_data in enumerate(mascotas_data):
-                print(f"🐕 Procesando mascota {i+1}: tipo {type(mascota_data)}")
+                print(f"Procesando mascota {i+1}: tipo {type(mascota_data)}")
                 
                 # Verificar si mascota_data es un diccionario
                 if isinstance(mascota_data, dict):
@@ -132,51 +133,51 @@ class ResponsableViewSet(APIView):
                     # DEBUG: Verificar foto
                     foto_base64 = mascota_data_copy.get('foto')
                     foto_index = mascota_data_copy.get('foto_index')
-                    print(f"📸 Foto encontrada: {type(foto_base64)}, longitud: {len(str(foto_base64)) if foto_base64 else 0}")
-                    print(f"📸 Foto_index encontrado: {foto_index}")
+                    print(f"Foto encontrada: {type(foto_base64)}, longitud: {len(str(foto_base64)) if foto_base64 else 0}")
+                    print(f"Foto_index encontrado: {foto_index}")
                     
                     # Procesar foto si existe
                     if foto_base64 and isinstance(foto_base64, str) and len(foto_base64) > 100:
                         try:
-                            print("📸 Procesando foto base64...")
+                            print("Procesando foto base64...")
                             
                             # Remover el prefijo data:image si existe
                             if foto_base64.startswith('data:image'):
                                 foto_base64 = foto_base64.split(',')[1]
-                                print("📸 Prefijo data:image removido")
+                                print("Prefijo data:image removido")
                             
                             # Decodificar base64
                             foto_data = base64.b64decode(foto_base64)
                             foto_file = ContentFile(foto_data, name=f'mascota_{mascota_data_copy.get("nombre", "sin_nombre")}.png')
                             mascota_data_copy['foto'] = foto_file
-                            print(f"✅ Foto procesada para mascota: {mascota_data_copy.get('nombre')}")
+                            print(f"Foto procesada para mascota: {mascota_data_copy.get('nombre')}")
                         except Exception as e:
-                            print(f"❌ Error procesando foto: {e}")
+                            print(f"Error procesando foto: {e}")
                             mascota_data_copy.pop('foto', None)
                     else:
-                        print(f"⚠️ Foto no válida o muy corta: {len(str(foto_base64)) if foto_base64 else 0} chars")
+                        print(f"Foto no valida o muy corta: {len(str(foto_base64)) if foto_base64 else 0} chars")
                         # Limpiar campos de foto para evitar errores
                         mascota_data_copy.pop('foto', None)
                         mascota_data_copy.pop('foto_index', None)
                     
-                    print(f"🔍 Datos de mascota antes del serializer: {mascota_data_copy}")
+                    print(f"Datos de mascota antes del serializer: {mascota_data_copy}")
                     mascota_serializer = MascotaSerializer(data=mascota_data_copy)
                     if mascota_serializer.is_valid():
                         # Asignar created_by si el usuario está autenticado
                         if request.user.is_authenticated:
                             mascota = mascota_serializer.save(created_by=request.user)
-                            print(f"🔍 Mascota creada con created_by: {mascota.created_by}")
+                            print(f"Mascota creada con created_by: {mascota.created_by}")
                         else:
-                            print("⚠️ Usuario no autenticado - mascota sin created_by")
+                            print("Usuario no autenticado - mascota sin created_by")
                             mascota = mascota_serializer.save()
                         serialized_data = mascota_serializer.data
-                        print(f"🔍 Datos serializados de mascota: {serialized_data}")
+                        print(f"Datos serializados de mascota: {serialized_data}")
                         mascotas_creadas.append(serialized_data)
-                        print(f"✅ Mascota {mascota.nombre} creada exitosamente")
+                        print(f"Mascota {mascota.nombre} creada exitosamente")
                     else:
-                        print(f"❌ Error en mascota serializer: {mascota_serializer.errors}")
+                        print(f"Error en mascota serializer: {mascota_serializer.errors}")
                 else:
-                    print(f"❌ mascota_data no es un diccionario: {type(mascota_data)}, valor: {mascota_data}")
+                    print(f"mascota_data no es un diccionario: {type(mascota_data)}, valor: {mascota_data}")
             
             response_data = responsable_serializer.data
             response_data['mascotas'] = mascotas_creadas
@@ -934,4 +935,129 @@ def api_mascotas_georef(request):
     return Response({
         'mascotas': mascotas_data,
         'total': len(mascotas_data)
+    })
+
+
+# ========== VISTAS PARA REGISTRO DE PÉRDIDAS ==========
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def registro_perdidas_list(request):
+    """
+    GET: Lista todos los registros de pérdidas del usuario actual
+    POST: Crea un nuevo registro de pérdida
+    """
+    if request.method == 'GET':
+        # Filtrar por usuario actual
+        perdidas = RegistroPerdidas.objects.filter(registrado_por=request.user).order_by('-fecha_registro')
+        data = []
+        for perdida in perdidas:
+            data.append({
+                'id': perdida.id,
+                'cantidad': perdida.cantidad,
+                'lote_vacuna': perdida.lote_vacuna,
+                'motivo': perdida.motivo,
+                'fecha_perdida': perdida.fecha_perdida.strftime('%Y-%m-%d'),
+                'fecha_registro': perdida.fecha_registro.strftime('%Y-%m-%d %H:%M'),
+                'latitud': float(perdida.latitud) if perdida.latitud else None,
+                'longitud': float(perdida.longitud) if perdida.longitud else None,
+                'foto_url': perdida.foto.url if perdida.foto else None,
+                'sincronizado': perdida.sincronizado,
+                'uuid_local': perdida.uuid_local
+            })
+        return Response(data)
+    
+    elif request.method == 'POST':
+        try:
+            # Crear nuevo registro de pérdida
+            data = request.data
+            
+            perdida = RegistroPerdidas(
+                registrado_por=request.user,
+                cantidad=data.get('cantidad'),
+                lote_vacuna=data.get('lote_vacuna'),
+                motivo=data.get('motivo', ''),
+                latitud=data.get('latitud'),
+                longitud=data.get('longitud'),
+                uuid_local=data.get('uuid_local')
+            )
+            
+            # Manejar foto si viene en base64
+            foto_base64 = data.get('foto_base64')
+            if foto_base64:
+                try:
+                    # Si viene con prefijo data:image, procesarlo
+                    if isinstance(foto_base64, str) and foto_base64.startswith('data:image'):
+                        # Remover el prefijo data:image/jpeg;base64,
+                        format, imgstr = foto_base64.split(';base64,')
+                        ext = format.split('/')[-1]
+                    else:
+                        # Si es solo base64 sin prefijo
+                        imgstr = foto_base64
+                        ext = 'jpg'  # Asumimos jpg por defecto
+                    
+                    # Decodificar y guardar la imagen
+                    foto = ContentFile(base64.b64decode(imgstr), name=f'perdida_{perdida.uuid_local or datetime.now().timestamp()}.{ext}')
+                    perdida.foto = foto
+                except Exception as e:
+                    print(f"Error procesando imagen: {e}")
+            
+            perdida.save()
+            
+            return Response({
+                'id': perdida.id,
+                'uuid_local': perdida.uuid_local,
+                'message': 'Registro de pérdida creado exitosamente'
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def estadisticas_perdidas(request):
+    """
+    Obtiene estadísticas de pérdidas por usuario/municipio
+    """
+    user = request.user
+    
+    # Si es administrador, ve todo
+    if user.tipo_usuario == 'administrador':
+        perdidas = RegistroPerdidas.objects.all()
+    # Si es técnico, ve las de su municipio
+    elif user.tipo_usuario == 'tecnico':
+        # Obtener planillas del técnico
+        planillas = Planilla.objects.filter(
+            Q(tecnico_asignado=user) | 
+            Q(tecnicos_adicionales=user)
+        ).distinct()
+        # Obtener usuarios de esas planillas
+        usuarios = set()
+        for p in planillas:
+            usuarios.update(p.get_all_vacunadores())
+            usuarios.update(p.get_all_tecnicos())
+        perdidas = RegistroPerdidas.objects.filter(registrado_por__in=usuarios)
+    else:
+        # Vacunador solo ve las suyas
+        perdidas = RegistroPerdidas.objects.filter(registrado_por=user)
+    
+    # Calcular estadísticas
+    total_perdidas = perdidas.count()
+    total_vacunas_perdidas = sum(p.cantidad for p in perdidas)
+    
+    # Agrupar por lote
+    perdidas_por_lote = {}
+    for p in perdidas:
+        if p.lote_vacuna not in perdidas_por_lote:
+            perdidas_por_lote[p.lote_vacuna] = 0
+        perdidas_por_lote[p.lote_vacuna] += p.cantidad
+    
+    return Response({
+        'total_registros': total_perdidas,
+        'total_vacunas_perdidas': total_vacunas_perdidas,
+        'perdidas_por_lote': perdidas_por_lote,
+        'tipo_usuario': user.tipo_usuario
     }) 
