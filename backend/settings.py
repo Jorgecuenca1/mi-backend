@@ -121,8 +121,12 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'sorteo_db',
+        'USER': 'sorteo_user',
+        'PASSWORD': 'SorteoPass123',
+        'HOST': 'database',  # Nombre del servicio en docker-compose
+        'PORT': '5432',
     }
 }
 
