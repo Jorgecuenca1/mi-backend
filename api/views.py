@@ -546,48 +546,40 @@ def dashboard_vacunador(request):
     if request.user.tipo_usuario != 'vacunador':
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('login')
-    
+
     # Planillas donde el usuario es vacunador principal O adicional
     planillas = Planilla.objects.filter(
         Q(assigned_to=request.user) |  # Vacunador principal
         Q(vacunadores_adicionales=request.user)  # Vacunador adicional
     ).distinct()
-    
-    responsables = Responsable.objects.filter(
-        Q(planilla__assigned_to=request.user) |
-        Q(planilla__vacunadores_adicionales=request.user)
-    ).distinct()
-    
-    mascotas = Mascota.objects.filter(
-        Q(responsable__planilla__assigned_to=request.user) |
-        Q(responsable__planilla__vacunadores_adicionales=request.user)
-    ).distinct()
-    
-    # Calcular estadísticas de zona
+
+    # Solo mascotas creadas por este vacunador
+    mascotas = Mascota.objects.filter(created_by=request.user)
+
+    # Solo responsables creados por este vacunador
+    responsables = Responsable.objects.filter(created_by=request.user)
+
+    # Calcular estadísticas de zona basado en mascotas del vacunador
     total_urbano = 0
     total_rural = 0
-    
-    for responsable in responsables:
-        mascotas_responsable = responsable.mascotas.filter(
-            Q(responsable__planilla__assigned_to=request.user) |
-            Q(responsable__planilla__vacunadores_adicionales=request.user)
-        )
-        for mascota in mascotas_responsable:
-            # Mapear zona del responsable a urbano/rural
-            if responsable.zona == 'barrio':
-                total_urbano += 1
-            elif responsable.zona == 'vereda':
-                total_rural += 1
-            elif responsable.zona == 'centro poblado':
-                # Centro poblado puede ser urbano o rural, por defecto urbano
+
+    for mascota in mascotas:
+        responsable = mascota.responsable
+        # Mapear zona del responsable a urbano/rural
+        if responsable.zona == 'barrio':
+            total_urbano += 1
+        elif responsable.zona == 'vereda':
+            total_rural += 1
+        elif responsable.zona == 'centro poblado':
+            # Centro poblado puede ser urbano o rural, por defecto urbano
+            total_urbano += 1
+        else:
+            # Fallback: usar el valor de la planilla si la zona del responsable no está definida
+            if responsable.planilla.urbano_rural == 'urbano':
                 total_urbano += 1
             else:
-                # Fallback: usar el valor de la planilla si la zona del responsable no está definida
-                if responsable.planilla.urbano_rural == 'urbano':
-                    total_urbano += 1
-                else:
-                    total_rural += 1
-    
+                total_rural += 1
+
     # Calcular porcentajes
     total_mascotas_count = mascotas.count()
     if total_mascotas_count > 0:
@@ -596,7 +588,43 @@ def dashboard_vacunador(request):
     else:
         porcentaje_urbano = 0
         porcentaje_rural = 0
-    
+
+    # Estadísticas de mascotas por día para el vacunador
+    from django.db.models import Count, Min
+    from datetime import datetime, timedelta, date
+
+    # Obtener la fecha más antigua de mascotas registradas por este vacunador
+    primera_mascota = mascotas.aggregate(Min('creado'))['creado__min']
+    if primera_mascota:
+        fecha_inicio = primera_mascota.date() if hasattr(primera_mascota, 'date') else primera_mascota
+    else:
+        fecha_inicio = datetime.now().date()
+
+    fecha_fin = datetime.now().date()
+
+    # Crear lista de todos los días desde el inicio hasta hoy
+    dias_completos = []
+    fecha_actual = fecha_inicio
+    while fecha_actual <= fecha_fin:
+        dias_completos.append(fecha_actual)
+        fecha_actual += timedelta(days=1)
+
+    # Obtener datos de mascotas por día para este vacunador
+    mascotas_query = mascotas.extra(
+        select={'dia': 'date(api_mascota.creado)'}
+    ).values('dia').annotate(cantidad=Count('id'))
+
+    # Crear diccionario con los datos
+    mascotas_dict = {item['dia']: item['cantidad'] for item in mascotas_query}
+
+    # Crear lista completa con todos los días
+    mascotas_por_dia = []
+    for dia in dias_completos:
+        mascotas_por_dia.append({
+            'dia': dia,
+            'cantidad': mascotas_dict.get(str(dia), 0)
+        })
+
     context = {
         'user_type': 'Vacunador',
         'planillas': planillas,
@@ -608,8 +636,9 @@ def dashboard_vacunador(request):
         'total_rural': total_rural,
         'porcentaje_urbano': porcentaje_urbano,
         'porcentaje_rural': porcentaje_rural,
+        'mascotas_por_dia': list(mascotas_por_dia),
     }
-    
+
     return render(request, 'api/dashboard_usuario.html', context)
 
 
@@ -1023,7 +1052,7 @@ def estadisticas_perdidas(request):
     Obtiene estadísticas de pérdidas por usuario/municipio
     """
     user = request.user
-    
+
     # Si es administrador, ve todo
     if user.tipo_usuario == 'administrador':
         perdidas = RegistroPerdidas.objects.all()
@@ -1031,7 +1060,7 @@ def estadisticas_perdidas(request):
     elif user.tipo_usuario == 'tecnico':
         # Obtener planillas del técnico
         planillas = Planilla.objects.filter(
-            Q(tecnico_asignado=user) | 
+            Q(tecnico_asignado=user) |
             Q(tecnicos_adicionales=user)
         ).distinct()
         # Obtener usuarios de esas planillas
@@ -1043,21 +1072,166 @@ def estadisticas_perdidas(request):
     else:
         # Vacunador solo ve las suyas
         perdidas = RegistroPerdidas.objects.filter(registrado_por=user)
-    
+
     # Calcular estadísticas
     total_perdidas = perdidas.count()
     total_vacunas_perdidas = sum(p.cantidad for p in perdidas)
-    
+
     # Agrupar por lote
     perdidas_por_lote = {}
     for p in perdidas:
         if p.lote_vacuna not in perdidas_por_lote:
             perdidas_por_lote[p.lote_vacuna] = 0
         perdidas_por_lote[p.lote_vacuna] += p.cantidad
-    
+
     return Response({
         'total_registros': total_perdidas,
         'total_vacunas_perdidas': total_vacunas_perdidas,
         'perdidas_por_lote': perdidas_por_lote,
         'tipo_usuario': user.tipo_usuario
-    }) 
+    })
+
+
+# ========== REPORTE PDF PARA VACUNADORES ==========
+
+@login_required
+def reporte_vacunador_pdf(request):
+    """Generar reporte PDF de vacunaciones diarias para vacunadores"""
+    if request.user.tipo_usuario != 'vacunador':
+        messages.error(request, 'No tienes permisos para acceder a esta sección.')
+        return redirect('login')
+
+    from django.http import HttpResponse
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.lib.units import inch
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib import colors
+    from io import BytesIO
+    from datetime import datetime, date
+    from django.db.models import Count
+
+    # Obtener fecha específica del parámetro GET o usar fecha actual
+    fecha_str = request.GET.get('fecha')
+    if fecha_str:
+        try:
+            fecha_reporte = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+        except ValueError:
+            fecha_reporte = date.today()
+    else:
+        fecha_reporte = date.today()
+
+    # Obtener mascotas del vacunador para la fecha específica
+    mascotas = Mascota.objects.filter(
+        created_by=request.user,
+        creado__date=fecha_reporte
+    ).select_related('responsable', 'responsable__planilla')
+
+    # Crear el PDF
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=0.5*inch)
+
+    # Contenido del PDF
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Estilo personalizado para el título
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Title'],
+        fontSize=16,
+        textColor=colors.darkblue,
+        spaceAfter=20,
+        alignment=1  # Centrado
+    )
+
+    # Título del reporte
+    title = Paragraph(f"Reporte de Vacunación Diaria<br/>Vacunador: {request.user.username}<br/>Fecha: {fecha_reporte.strftime('%d/%m/%Y')}", title_style)
+    elements.append(title)
+    elements.append(Spacer(1, 20))
+
+    # Resumen estadístico
+    total_mascotas = mascotas.count()
+    total_perros = mascotas.filter(tipo='perro').count()
+    total_gatos = mascotas.filter(tipo='gato').count()
+    con_tarjeta = mascotas.filter(antecedente_vacunal=True).count()
+    sin_tarjeta = mascotas.filter(antecedente_vacunal=False).count()
+
+    resumen_data = [
+        ['Resumen del Día', ''],
+        ['Total de Mascotas Vacunadas:', str(total_mascotas)],
+        ['Perros:', str(total_perros)],
+        ['Gatos:', str(total_gatos)],
+        ['Con Tarjeta Previa:', str(con_tarjeta)],
+        ['Sin Tarjeta Previa:', str(sin_tarjeta)],
+    ]
+
+    resumen_table = Table(resumen_data, colWidths=[3*inch, 1*inch])
+    resumen_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+
+    elements.append(resumen_table)
+    elements.append(Spacer(1, 30))
+
+    if total_mascotas > 0:
+        # Tabla detallada de mascotas
+        data = [['#', 'Mascota', 'Tipo', 'Responsable', 'Municipio', 'Zona', 'Tarjeta Previa']]
+
+        for i, mascota in enumerate(mascotas, 1):
+            data.append([
+                str(i),
+                mascota.nombre,
+                mascota.get_tipo_display(),
+                mascota.responsable.nombre,
+                mascota.responsable.planilla.municipio,
+                mascota.responsable.zona.title(),
+                'Sí' if mascota.antecedente_vacunal else 'No'
+            ])
+
+        table = Table(data, colWidths=[0.5*inch, 1.2*inch, 0.8*inch, 1.5*inch, 1.2*inch, 0.8*inch, 0.8*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+
+        elements.append(Paragraph("Detalle de Mascotas Vacunadas:", styles['Heading2']))
+        elements.append(Spacer(1, 10))
+        elements.append(table)
+    else:
+        elements.append(Paragraph("No se registraron vacunaciones en esta fecha.", styles['Normal']))
+
+    # Pie de página
+    elements.append(Spacer(1, 30))
+    footer_text = f"Reporte generado el {datetime.now().strftime('%d/%m/%Y %H:%M')} - Sistema de Vacunación VetControl"
+    footer = Paragraph(footer_text, styles['Normal'])
+    elements.append(footer)
+
+    # Construir el PDF
+    doc.build(elements)
+
+    # Obtener el contenido del buffer
+    pdf = buffer.getvalue()
+    buffer.close()
+
+    # Crear la respuesta HTTP
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="reporte_vacunacion_{request.user.username}_{fecha_reporte.strftime("%Y-%m-%d")}.pdf"'
+    response.write(pdf)
+
+    return response 

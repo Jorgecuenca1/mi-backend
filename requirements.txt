@@ -9,3 +9,4 @@ pillow
 PyJWT
 sqlparse
 typing-extensions
+reportlab

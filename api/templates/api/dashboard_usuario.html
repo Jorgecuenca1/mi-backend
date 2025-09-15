@@ -440,17 +440,64 @@
             </div>
         </div>
 
-        {% if user_type == 'Técnico' %}
-        <!-- Estadísticas de Mascotas por Día (Solo para Técnicos) -->
+        {% if user_type == 'Técnico' or user_type == 'Vacunador' %}
+        <!-- Estadísticas de Mascotas por Día -->
         <div class="data-section">
-            <div class="section-header">📊 Mascotas Agregadas por Día (Historial Completo)</div>
+            <div class="section-header">
+                📊 {% if user_type == 'Vacunador' %}Mis Vacunaciones por Día{% else %}Mascotas Agregadas por Día (Historial Completo){% endif %}
+            </div>
+
+            {% if user_type == 'Vacunador' %}
+            <!-- Botones de acción para exportar PDF -->
+            <div style="padding: 1rem 2rem; background: #f8f9fa; border-bottom: 1px solid #dee2e6;">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <label for="fecha-reporte" style="font-weight: bold; color: #495057;">Exportar PDF por fecha:</label>
+                    <input type="date" id="fecha-reporte" style="
+                        padding: 0.5rem;
+                        border: 1px solid #ced4da;
+                        border-radius: 4px;
+                        font-size: 0.9rem;
+                    " value="{{ request.GET.fecha|default:'' }}">
+                    <button onclick="exportarPDF()" style="
+                        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                        color: white;
+                        padding: 0.5rem 1rem;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        transition: all 0.3s;
+                        box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+                    " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                        📄 Exportar PDF
+                    </button>
+                    <button onclick="exportarPDFHoy()" style="
+                        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                        color: white;
+                        padding: 0.5rem 1rem;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        transition: all 0.3s;
+                        box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
+                    " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                        📋 PDF Hoy
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+
             <div class="table-container" style="max-height: 400px; overflow-y: auto;">
                 {% if mascotas_por_dia %}
                 <table>
                     <thead>
                         <tr>
                             <th>Fecha</th>
-                            <th>Cantidad de Mascotas</th>
+                            <th>{% if user_type == 'Vacunador' %}Mascotas Vacunadas{% else %}Cantidad de Mascotas{% endif %}</th>
+                            {% if user_type == 'Vacunador' %}
+                            <th>Acciones</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -464,13 +511,33 @@
                                     <span style="color: #999;">0</span>
                                 {% endif %}
                             </td>
+                            {% if user_type == 'Vacunador' %}
+                            <td>
+                                {% if dia.cantidad > 0 %}
+                                <button onclick="exportarPDFFecha('{{ dia.dia|date:"Y-m-d" }}')" style="
+                                    background: #007bff;
+                                    color: white;
+                                    padding: 0.25rem 0.5rem;
+                                    border: none;
+                                    border-radius: 3px;
+                                    cursor: pointer;
+                                    font-size: 0.8rem;
+                                    transition: background 0.3s;
+                                " onmouseover="this.style.background='#0056b3'" onmouseout="this.style.background='#007bff'">
+                                    📄 PDF
+                                </button>
+                                {% else %}
+                                <span style="color: #999; font-size: 0.8rem;">Sin datos</span>
+                                {% endif %}
+                            </td>
+                            {% endif %}
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
                 {% else %}
                 <div class="no-data">
-                    📊 No hay datos de mascotas registradas.
+                    📊 No hay datos de {% if user_type == 'Vacunador' %}vacunaciones{% else %}mascotas{% endif %} registradas.
                 </div>
                 {% endif %}
             </div>
@@ -687,6 +754,36 @@
             font-weight: bold;
         }
     </style>
+
+    <!-- JavaScript para funcionalidad de PDF -->
+    <script>
+        // Función para exportar PDF del día actual
+        function exportarPDFHoy() {
+            const today = new Date().toISOString().split('T')[0];
+            exportarPDFFecha(today);
+        }
+
+        // Función para exportar PDF de una fecha específica
+        function exportarPDFFecha(fecha) {
+            const url = `{% url 'reporte_vacunador_pdf' %}?fecha=${fecha}`;
+            window.open(url, '_blank');
+        }
+
+        // Función para exportar PDF con fecha seleccionada en el input
+        function exportarPDF() {
+            const fechaInput = document.getElementById('fecha-reporte');
+            const fecha = fechaInput.value || new Date().toISOString().split('T')[0];
+            exportarPDFFecha(fecha);
+        }
+
+        // Establecer fecha de hoy por defecto en el input si está vacío
+        document.addEventListener('DOMContentLoaded', function() {
+            const fechaInput = document.getElementById('fecha-reporte');
+            if (fechaInput && !fechaInput.value) {
+                fechaInput.value = new Date().toISOString().split('T')[0];
+            }
+        });
+    </script>
 </body>
 
 </html>
