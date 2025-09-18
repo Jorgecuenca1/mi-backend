@@ -158,8 +158,8 @@ class PlanillaAdmin(NoLogMixin, admin.ModelAdmin):
 class ResponsableResource(resources.ModelResource):
     class Meta:
         model = Responsable
-        fields = ('id', 'nombre', 'telefono', 'finca', 'planilla__nombre', 'zona', 'nombre_zona', 'lote_vacuna', 'created_by__username', 'creado')
-        export_order = ('id', 'nombre', 'telefono', 'finca', 'planilla__nombre', 'zona', 'nombre_zona', 'lote_vacuna', 'created_by__username', 'creado')
+        fields = ('id', 'nombre', 'telefono', 'finca', 'planilla__nombre', 'planilla__municipio', 'planilla__urbano_rural', 'planilla__centro_poblado_vereda_barrio', 'zona', 'nombre_zona', 'lote_vacuna', 'created_by__username', 'creado')
+        export_order = ('id', 'nombre', 'telefono', 'finca', 'planilla__nombre', 'planilla__municipio', 'planilla__urbano_rural', 'planilla__centro_poblado_vereda_barrio', 'zona', 'nombre_zona', 'lote_vacuna', 'created_by__username', 'creado')
 
 @admin.register(Responsable)
 class ResponsableAdmin(NoLogMixin, ImportExportModelAdmin):
@@ -188,8 +188,8 @@ class ResponsableAdmin(NoLogMixin, ImportExportModelAdmin):
 class MascotaResource(resources.ModelResource):
     class Meta:
         model = Mascota
-        fields = ('id', 'nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'esterilizado', 'responsable__nombre', 'responsable__telefono', 'latitud', 'longitud', 'created_by__username', 'creado')
-        export_order = ('id', 'nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'esterilizado', 'responsable__nombre', 'responsable__telefono', 'latitud', 'longitud', 'created_by__username', 'creado')
+        fields = ('id', 'nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'esterilizado', 'responsable__nombre', 'responsable__telefono', 'responsable__finca', 'responsable__zona', 'responsable__nombre_zona', 'responsable__lote_vacuna', 'responsable__planilla__nombre', 'responsable__planilla__municipio', 'responsable__planilla__urbano_rural', 'responsable__planilla__centro_poblado_vereda_barrio', 'latitud', 'longitud', 'created_by__username', 'creado')
+        export_order = ('id', 'nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'esterilizado', 'responsable__nombre', 'responsable__telefono', 'responsable__finca', 'responsable__zona', 'responsable__nombre_zona', 'responsable__lote_vacuna', 'responsable__planilla__nombre', 'responsable__planilla__municipio', 'responsable__planilla__urbano_rural', 'responsable__planilla__centro_poblado_vereda_barrio', 'latitud', 'longitud', 'created_by__username', 'creado')
 
 @admin.register(Mascota)
 class MascotaAdmin(NoLogMixin, ImportExportModelAdmin):
