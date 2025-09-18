@@ -1,6 +1,7 @@
 asgiref
 django
 django-cors-headers
+django-import-export
 djangorestframework
 psycopg2-binary
 psycopg2

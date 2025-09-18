@@ -2,6 +2,8 @@
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from import_export import resources
+from import_export.admin import ImportExportModelAdmin
 from .models import Veterinario, Planilla, Mascota, Responsable, RegistroPerdidas
 
 class NoLogMixin:
@@ -153,14 +155,21 @@ class PlanillaAdmin(NoLogMixin, admin.ModelAdmin):
         return ", ".join([t.username for t in obj.tecnicos_adicionales.all()[:3]])
     get_tecnicos_adicionales.short_description = 'Técnicos Adicionales'
 
+class ResponsableResource(resources.ModelResource):
+    class Meta:
+        model = Responsable
+        fields = ('id', 'nombre', 'telefono', 'finca', 'planilla__nombre', 'zona', 'nombre_zona', 'lote_vacuna', 'created_by__username', 'creado')
+        export_order = ('id', 'nombre', 'telefono', 'finca', 'planilla__nombre', 'zona', 'nombre_zona', 'lote_vacuna', 'created_by__username', 'creado')
+
 @admin.register(Responsable)
-class ResponsableAdmin(NoLogMixin, admin.ModelAdmin):
+class ResponsableAdmin(NoLogMixin, ImportExportModelAdmin):
     """Admin para responsables de mascotas."""
+    resource_class = ResponsableResource
     list_display = ('id', 'nombre', 'telefono', 'finca', 'planilla', 'zona', 'nombre_zona', 'lote_vacuna', 'created_by', 'creado')
     list_filter = ('planilla', 'zona', 'lote_vacuna', 'created_by', 'creado')
     search_fields = ('nombre', 'telefono', 'finca', 'zona', 'nombre_zona', 'lote_vacuna', 'created_by__username')
     ordering = ('-creado',)
-    
+
     fieldsets = (
         ('Información Personal', {
             'fields': ('nombre', 'telefono', 'finca', 'planilla')
@@ -176,15 +185,22 @@ class ResponsableAdmin(NoLogMixin, admin.ModelAdmin):
     )
     readonly_fields = ('created_by', 'creado')
 
+class MascotaResource(resources.ModelResource):
+    class Meta:
+        model = Mascota
+        fields = ('id', 'nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'esterilizado', 'responsable__nombre', 'responsable__telefono', 'latitud', 'longitud', 'created_by__username', 'creado')
+        export_order = ('id', 'nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'esterilizado', 'responsable__nombre', 'responsable__telefono', 'latitud', 'longitud', 'created_by__username', 'creado')
+
 @admin.register(Mascota)
-class MascotaAdmin(NoLogMixin, admin.ModelAdmin):
+class MascotaAdmin(NoLogMixin, ImportExportModelAdmin):
     """Admin para las mascotas de cada responsable."""
+    resource_class = MascotaResource
     list_display = ('id', 'nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'esterilizado', 'responsable', 'created_by', 'creado')
     list_filter = ('tipo', 'raza', 'antecedente_vacunal', 'esterilizado', 'responsable', 'created_by', 'creado')
     search_fields = ('nombre', 'responsable__nombre', 'created_by__username')
     ordering = ('-creado',)
     readonly_fields = ('created_by', 'creado')
-    
+
     fieldsets = (
         ('Información Básica', {
             'fields': ('nombre', 'tipo', 'raza', 'color', 'antecedente_vacunal', 'esterilizado', 'responsable')
