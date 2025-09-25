@@ -1234,4 +1234,385 @@ def reporte_vacunador_pdf(request):
     response['Content-Disposition'] = f'attachment; filename="reporte_vacunacion_{request.user.username}_{fecha_reporte.strftime("%Y-%m-%d")}.pdf"'
     response.write(pdf)
 
-    return response 
+    return response
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def arbol_reportes(request):
+    """
+    API para obtener datos del árbol jerárquico de reportes
+    Meta → Municipio → Vacunador → Día → Responsable → Mascota
+    Solo para administradores
+
+    Parámetros de filtrado:
+    - fecha_inicio: YYYY-MM-DD
+    - fecha_fin: YYYY-MM-DD
+    - municipio: nombre del municipio
+    - vacunador: ID del vacunador
+    - tipo_mascota: 'perro' o 'gato'
+    - solo_con_antecedente: true/false
+    - solo_esterilizados: true/false
+    """
+    if request.user.tipo_usuario != 'administrador':
+        return Response({'error': 'Solo administradores pueden acceder a esta vista'}, status=status.HTTP_403_FORBIDDEN)
+
+    from django.db.models import Count, Q
+    from collections import defaultdict
+    import json
+    from datetime import datetime
+
+    # Obtener parámetros de filtrado
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    municipio_filtro = request.GET.get('municipio')
+    vacunador_filtro = request.GET.get('vacunador')
+    tipo_mascota_filtro = request.GET.get('tipo_mascota')
+    solo_con_antecedente = request.GET.get('solo_con_antecedente') == 'true'
+    solo_esterilizados = request.GET.get('solo_esterilizados') == 'true'
+
+    # Estructura del árbol: Meta -> Municipio -> Vacunador -> Día -> Responsable -> Mascota
+    arbol = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
+
+    # Construir queryset base
+    mascotas_query = Mascota.objects.select_related(
+        'responsable',
+        'responsable__planilla',
+        'created_by'
+    )
+
+    # Aplicar filtros
+    if fecha_inicio:
+        try:
+            fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+            mascotas_query = mascotas_query.filter(creado__date__gte=fecha_inicio_obj)
+        except ValueError:
+            pass
+
+    if fecha_fin:
+        try:
+            fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+            mascotas_query = mascotas_query.filter(creado__date__lte=fecha_fin_obj)
+        except ValueError:
+            pass
+
+    if municipio_filtro:
+        mascotas_query = mascotas_query.filter(responsable__planilla__municipio__icontains=municipio_filtro)
+
+    if vacunador_filtro:
+        try:
+            vacunador_id = int(vacunador_filtro)
+            mascotas_query = mascotas_query.filter(created_by_id=vacunador_id)
+        except (ValueError, TypeError):
+            pass
+
+    if tipo_mascota_filtro and tipo_mascota_filtro in ['perro', 'gato']:
+        mascotas_query = mascotas_query.filter(tipo=tipo_mascota_filtro)
+
+    if solo_con_antecedente:
+        mascotas_query = mascotas_query.filter(antecedente_vacunal=True)
+
+    if solo_esterilizados:
+        mascotas_query = mascotas_query.filter(esterilizado=True)
+
+    # Ordenar los resultados
+    mascotas = mascotas_query.order_by(
+        'responsable__planilla__municipio',
+        'created_by__username',
+        'creado__date',
+        'responsable__nombre',
+        'nombre'
+    )
+
+    # Construir el árbol
+    for mascota in mascotas:
+        municipio = mascota.responsable.planilla.municipio
+        vacunador = mascota.created_by.username if mascota.created_by else 'Sin asignar'
+        fecha = mascota.creado.strftime('%Y-%m-%d')
+        responsable_nombre = mascota.responsable.nombre
+
+        # Datos de la mascota
+        mascota_data = {
+            'id': mascota.id,
+            'nombre': mascota.nombre,
+            'tipo': mascota.tipo,
+            'raza': mascota.raza,
+            'color': mascota.color,
+            'antecedente_vacunal': mascota.antecedente_vacunal,
+            'esterilizado': mascota.esterilizado,
+            'creado': mascota.creado.isoformat(),
+            'responsable': {
+                'id': mascota.responsable.id,
+                'nombre': mascota.responsable.nombre,
+                'telefono': mascota.responsable.telefono,
+                'finca': mascota.responsable.finca,
+                'zona': mascota.responsable.zona,
+                'nombre_zona': mascota.responsable.nombre_zona,
+                'lote_vacuna': mascota.responsable.lote_vacuna,
+            }
+        }
+
+        arbol[municipio][vacunador][fecha][responsable_nombre].append(mascota_data)
+
+    # Convertir a estructura de árbol con conteos
+    resultado = []
+    total_mascotas = 0
+
+    for municipio, vacunadores in arbol.items():
+        municipio_mascotas = 0
+        vacunadores_list = []
+
+        for vacunador, fechas in vacunadores.items():
+            vacunador_mascotas = 0
+            fechas_list = []
+
+            for fecha, responsables in fechas.items():
+                fecha_mascotas = 0
+                responsables_list = []
+
+                for responsable_nombre, mascotas_list in responsables.items():
+                    responsable_mascotas = len(mascotas_list)
+                    fecha_mascotas += responsable_mascotas
+
+                    responsables_list.append({
+                        'nombre': responsable_nombre,
+                        'total_mascotas': responsable_mascotas,
+                        'mascotas': mascotas_list
+                    })
+
+                vacunador_mascotas += fecha_mascotas
+                fechas_list.append({
+                    'fecha': fecha,
+                    'total_mascotas': fecha_mascotas,
+                    'responsables': responsables_list
+                })
+
+            municipio_mascotas += vacunador_mascotas
+            vacunadores_list.append({
+                'nombre': vacunador,
+                'total_mascotas': vacunador_mascotas,
+                'fechas': fechas_list
+            })
+
+        total_mascotas += municipio_mascotas
+        resultado.append({
+            'municipio': municipio,
+            'total_mascotas': municipio_mascotas,
+            'vacunadores': vacunadores_list
+        })
+
+    # Ordenar por municipio
+    resultado.sort(key=lambda x: x['municipio'])
+
+    # Obtener información adicional para filtros
+    filtros_aplicados = {
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'municipio': municipio_filtro,
+        'vacunador': vacunador_filtro,
+        'tipo_mascota': tipo_mascota_filtro,
+        'solo_con_antecedente': solo_con_antecedente,
+        'solo_esterilizados': solo_esterilizados,
+    }
+
+    return Response({
+        'total_mascotas': total_mascotas,
+        'total_municipios': len(resultado),
+        'filtros_aplicados': filtros_aplicados,
+        'arbol': resultado
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def estadisticas_generales(request):
+    """
+    API para obtener estadísticas generales del sistema
+    Solo para administradores
+    """
+    if request.user.tipo_usuario != 'administrador':
+        return Response({'error': 'Solo administradores pueden acceder a esta vista'}, status=status.HTTP_403_FORBIDDEN)
+
+    from django.db.models import Count, Q
+
+    # Estadísticas generales
+    total_mascotas = Mascota.objects.count()
+    total_responsables = Responsable.objects.count()
+    total_planillas = Planilla.objects.count()
+    total_municipios = Planilla.objects.values('municipio').distinct().count()
+
+    # Estadísticas por tipo
+    mascotas_por_tipo = Mascota.objects.values('tipo').annotate(count=Count('id'))
+    mascotas_con_antecedente = Mascota.objects.filter(antecedente_vacunal=True).count()
+    mascotas_esterilizadas = Mascota.objects.filter(esterilizado=True).count()
+
+    # Estadísticas por usuario
+    usuarios_activos = Veterinario.objects.filter(
+        Q(mascotas_creadas__isnull=False) | Q(responsables_creados__isnull=False)
+    ).distinct().count()
+
+    return Response({
+        'totales': {
+            'mascotas': total_mascotas,
+            'responsables': total_responsables,
+            'planillas': total_planillas,
+            'municipios': total_municipios,
+            'usuarios_activos': usuarios_activos
+        },
+        'mascotas_por_tipo': list(mascotas_por_tipo),
+        'mascotas_con_antecedente': mascotas_con_antecedente,
+        'mascotas_esterilizadas': mascotas_esterilizadas,
+        'porcentajes': {
+            'con_antecedente': round((mascotas_con_antecedente / total_mascotas * 100), 2) if total_mascotas > 0 else 0,
+            'esterilizadas': round((mascotas_esterilizadas / total_mascotas * 100), 2) if total_mascotas > 0 else 0,
+        }
+    })
+
+
+@login_required
+def arbol_reportes_view(request):
+    """
+    Vista web para mostrar el árbol jerárquico de reportes
+    Solo para administradores
+    """
+    if request.user.tipo_usuario != 'administrador':
+        messages.error(request, 'Solo administradores pueden acceder al árbol de reportes.')
+        return redirect('login')
+
+    return render(request, 'api/arbol_reportes.html')
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def opciones_filtros_reportes(request):
+    """
+    API para obtener las opciones disponibles para los filtros del árbol de reportes
+    Solo para administradores
+    """
+    if request.user.tipo_usuario != 'administrador':
+        return Response({'error': 'Solo administradores pueden acceder a esta vista'}, status=status.HTTP_403_FORBIDDEN)
+
+    from django.db.models import Min, Max
+
+    # Obtener municipios únicos
+    municipios = list(Planilla.objects.values_list('municipio', flat=True).distinct().order_by('municipio'))
+
+    # Obtener vacunadores únicos (que hayan creado mascotas)
+    vacunadores = list(Veterinario.objects.filter(
+        mascotas_creadas__isnull=False
+    ).distinct().values('id', 'username', 'first_name', 'last_name').order_by('username'))
+
+    # Formatear nombres de vacunadores
+    for vacunador in vacunadores:
+        nombre_completo = f"{vacunador['first_name']} {vacunador['last_name']}".strip()
+        vacunador['nombre_display'] = nombre_completo if nombre_completo else vacunador['username']
+
+    # Obtener rango de fechas disponibles
+    fechas_range = Mascota.objects.aggregate(
+        fecha_min=Min('creado__date'),
+        fecha_max=Max('creado__date')
+    )
+
+    return Response({
+        'municipios': municipios,
+        'vacunadores': vacunadores,
+        'tipos_mascota': [
+            {'value': 'perro', 'label': '🐕 Perros'},
+            {'value': 'gato', 'label': '🐱 Gatos'}
+        ],
+        'fecha_min': fechas_range['fecha_min'],
+        'fecha_max': fechas_range['fecha_max'],
+        'filtros_especiales': [
+            {'key': 'solo_con_antecedente', 'label': 'Solo con antecedente vacunal'},
+            {'key': 'solo_esterilizados', 'label': 'Solo esterilizados'}
+        ]
+    })
+
+
+# API endpoints para edición de responsables y mascotas
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_responsable(request, responsable_id):
+    """
+    Actualizar datos de un responsable
+    """
+    try:
+        responsable = get_object_or_404(Responsable, id=responsable_id)
+
+        # Verificar permisos
+        if request.user.tipo_usuario not in ['administrador', 'tecnico']:
+            return Response(
+                {'error': 'No tiene permisos para editar responsables'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Actualizar campos
+        responsable.nombre = request.data.get('nombre', responsable.nombre)
+        responsable.telefono = request.data.get('telefono', responsable.telefono)
+        responsable.finca_nombre_predio = request.data.get('finca_nombre_predio', responsable.finca_nombre_predio)
+        responsable.zona_vacunacion = request.data.get('zona_vacunacion', responsable.zona_vacunacion)
+
+        responsable.save()
+
+        return Response({
+            'message': 'Responsable actualizado correctamente',
+            'responsable': {
+                'id': responsable.id,
+                'nombre': responsable.nombre,
+                'telefono': responsable.telefono,
+                'finca_nombre_predio': responsable.finca_nombre_predio,
+                'zona_vacunacion': responsable.zona_vacunacion
+            }
+        })
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_mascota(request, mascota_id):
+    """
+    Actualizar datos de una mascota
+    """
+    try:
+        mascota = get_object_or_404(Mascota, id=mascota_id)
+
+        # Verificar permisos
+        if request.user.tipo_usuario not in ['administrador', 'tecnico', 'vacunador']:
+            return Response(
+                {'error': 'No tiene permisos para editar mascotas'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Actualizar campos
+        mascota.nombre = request.data.get('nombre', mascota.nombre)
+        mascota.tipo = request.data.get('tipo', mascota.tipo)
+        mascota.raza = request.data.get('raza', mascota.raza)
+        mascota.color = request.data.get('color', mascota.color)
+        mascota.antecedente_vacunal = request.data.get('antecedente_vacunal', mascota.antecedente_vacunal)
+        mascota.esterilizado = request.data.get('esterilizado', mascota.esterilizado)
+
+        mascota.save()
+
+        return Response({
+            'message': 'Mascota actualizada correctamente',
+            'mascota': {
+                'id': mascota.id,
+                'nombre': mascota.nombre,
+                'tipo': mascota.tipo,
+                'raza': mascota.raza,
+                'color': mascota.color,
+                'antecedente_vacunal': mascota.antecedente_vacunal,
+                'esterilizado': mascota.esterilizado
+            }
+        })
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        ) 

@@ -1,0 +1,2485 @@
+<!-- api/templates/api/arbol_reportes.html -->
+{% extends 'api/base.html' %}
+
+{% block title %}Árbol de Reportes - VetControl{% endblock %}
+
+{% block extra_css %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    body {
+        background: linear-gradient(135deg, #f5f7ff 0%, #f0f3ff 50%, #e8f2ff 100%);
+        min-height: 100vh;
+    }
+
+    .tree-container {
+        font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: transparent;
+    }
+
+    .stats-header {
+        background: linear-gradient(135deg,
+            rgba(123, 97, 255, 0.9) 0%,
+            rgba(139, 69, 255, 0.9) 25%,
+            rgba(75, 123, 236, 0.9) 75%,
+            rgba(56, 178, 172, 0.9) 100%);
+        color: white;
+        padding: 40px;
+        border-radius: 25px;
+        margin-bottom: 30px;
+        box-shadow:
+            0 20px 40px rgba(123, 97, 255, 0.3),
+            0 10px 20px rgba(0, 0, 0, 0.1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stats-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background:
+            radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.15) 0%, transparent 50%);
+        pointer-events: none;
+    }
+
+    .header-content {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+    }
+
+    .stats-header h1 {
+        font-size: 3.2em;
+        font-weight: 700;
+        margin-bottom: 15px;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+        font-size: 1.3em;
+        opacity: 0.9;
+        margin-bottom: 40px;
+        font-weight: 300;
+        color: rgba(255, 255, 255, 0.95);
+    }
+
+    .hierarchy-explanation {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 25px;
+        padding: 35px;
+        margin: 30px 0;
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .hierarchy-explanation h3 {
+        font-size: 1.4em;
+        font-weight: 600;
+        margin-bottom: 25px;
+        color: rgba(255, 255, 255, 0.95);
+        text-align: center;
+    }
+
+    .hierarchy-flow {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    .hierarchy-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.25);
+        border-radius: 20px;
+        padding: 20px 15px;
+        min-width: 120px;
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .hierarchy-item:hover {
+        transform: translateY(-5px) scale(1.05);
+        box-shadow: 0 15px 35px rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.35);
+    }
+
+    .hierarchy-icon {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    }
+
+    .hierarchy-text {
+        text-align: center;
+        color: rgba(255, 255, 255, 0.95);
+    }
+
+    .hierarchy-text strong {
+        display: block;
+        font-size: 1.1em;
+        font-weight: 700;
+        margin-bottom: 5px;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .hierarchy-text span {
+        display: block;
+        font-size: 0.85em;
+        opacity: 0.8;
+        font-weight: 400;
+    }
+
+    .hierarchy-arrow {
+        font-size: 2em;
+        color: rgba(255, 255, 255, 0.8);
+        font-weight: bold;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        animation: pulse 2s infinite;
+    }
+
+    @media (max-width: 768px) {
+        .hierarchy-flow {
+            flex-direction: column;
+        }
+
+        .hierarchy-arrow {
+            transform: rotate(90deg);
+        }
+
+        .hierarchy-item {
+            min-width: 200px;
+        }
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 25px;
+        margin-top: 30px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .stat-card {
+        background: rgba(255, 255, 255, 0.25);
+        padding: 25px 20px;
+        border-radius: 20px;
+        text-align: center;
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.1) 0%,
+            rgba(255, 255, 255, 0.05) 100%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .stat-card:hover::before {
+        opacity: 1;
+    }
+
+    .stat-number {
+        font-size: 3em;
+        font-weight: 700;
+        margin-bottom: 8px;
+        background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        position: relative;
+        z-index: 1;
+    }
+
+    .stat-label {
+        font-size: 0.95em;
+        opacity: 0.9;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        position: relative;
+        z-index: 1;
+    }
+
+    .tree-level {
+        margin-left: 0;
+        margin-bottom: 15px;
+    }
+
+    .tree-node {
+        border: none;
+        border-radius: 20px;
+        margin-bottom: 12px;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.08),
+            0 4px 16px rgba(0, 0, 0, 0.04);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        overflow: hidden;
+    }
+
+    .tree-node:hover {
+        box-shadow:
+            0 16px 48px rgba(0, 0, 0, 0.12),
+            0 8px 24px rgba(0, 0, 0, 0.08);
+        transform: translateY(-4px) scale(1.01);
+        border-color: rgba(123, 97, 255, 0.2);
+    }
+
+    .tree-header {
+        padding: 20px 25px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.3s ease;
+        position: relative;
+        background: transparent;
+    }
+
+    .tree-header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-grow: 1;
+        cursor: pointer;
+    }
+
+    .tree-actions {
+        margin-left: 15px;
+        display: flex;
+        gap: 8px;
+    }
+
+    .edit-btn {
+        background: linear-gradient(135deg,
+            rgba(59, 130, 246, 0.9) 0%,
+            rgba(37, 99, 235, 0.9) 100%);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .edit-btn:hover {
+        transform: translateY(-2px) scale(1.1);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        background: linear-gradient(135deg,
+            rgba(37, 99, 235, 1) 0%,
+            rgba(29, 78, 216, 1) 100%);
+    }
+
+    .edit-btn-small {
+        width: 32px;
+        height: 32px;
+        font-size: 0.8em;
+    }
+
+    .edit-btn i {
+        font-size: 1em;
+    }
+
+    .tree-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .tree-header:hover::before {
+        opacity: 1;
+    }
+
+    .tree-header.expanded {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+
+    .tree-info {
+        flex-grow: 1;
+        margin-left: 10px;
+    }
+
+    .tree-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-top: 8px;
+    }
+
+    .detail-item {
+        font-size: 0.85em;
+        color: rgba(74, 85, 104, 0.8);
+        background: rgba(255, 255, 255, 0.6);
+        padding: 4px 10px;
+        border-radius: 12px;
+        backdrop-filter: blur(5px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        font-weight: 500;
+    }
+
+    .tree-badge {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: linear-gradient(135deg,
+            rgba(34, 197, 94, 0.1) 0%,
+            rgba(16, 185, 129, 0.1) 100%);
+        padding: 12px 20px;
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        margin-right: 15px;
+    }
+
+    .badge-number {
+        font-size: 1.4em;
+        font-weight: 700;
+        color: #059669;
+        line-height: 1;
+    }
+
+    .badge-label {
+        font-size: 0.75em;
+        color: #065f46;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 2px;
+    }
+
+    .tree-icon {
+        margin-right: 15px;
+        font-size: 1.5em;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    }
+
+    .tree-title {
+        flex-grow: 1;
+        font-weight: 600;
+        color: #2d3748;
+        font-size: 1.1em;
+        letter-spacing: -0.01em;
+    }
+
+    .tree-subtitle {
+        color: #718096;
+        font-size: 0.9em;
+        margin-top: 4px;
+        font-weight: 400;
+    }
+
+    .tree-count {
+        background: linear-gradient(135deg,
+            rgba(123, 97, 255, 0.15) 0%,
+            rgba(75, 123, 236, 0.15) 100%);
+        color: #4c51bf;
+        padding: 8px 16px;
+        border-radius: 25px;
+        font-weight: 700;
+        font-size: 0.9em;
+        margin-right: 15px;
+        border: 1px solid rgba(123, 97, 255, 0.2);
+        backdrop-filter: blur(10px);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .expand-icon {
+        color: #a0aec0;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 1.2em;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    }
+
+    .expand-icon.expanded {
+        transform: rotate(180deg);
+        color: #4c51bf;
+    }
+
+    .tree-content {
+        padding: 0 25px 25px 25px;
+        display: none;
+        animation: fadeInDown 0.3s ease;
+    }
+
+    .tree-content.expanded {
+        display: block;
+    }
+
+    .tree-children {
+        margin-left: 15px;
+        position: relative;
+    }
+
+    .tree-children::before {
+        content: '';
+        position: absolute;
+        left: -8px;
+        top: 0;
+        bottom: 20px;
+        width: 2px;
+        background: linear-gradient(180deg,
+            rgba(123, 97, 255, 0.3) 0%,
+            rgba(75, 123, 236, 0.3) 50%,
+            transparent 100%);
+        border-radius: 2px;
+    }
+
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Colores específicos por nivel con gradientes modernos */
+    .municipio {
+        position: relative;
+    }
+
+    .municipio::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: linear-gradient(180deg, #ff6b6b 0%, #ee5a24 100%);
+        border-radius: 0 4px 4px 0;
+    }
+
+    .municipio .tree-count {
+        background: linear-gradient(135deg, rgba(255, 107, 107, 0.15) 0%, rgba(238, 90, 36, 0.15) 100%);
+        color: #e55039;
+        border-color: rgba(255, 107, 107, 0.3);
+    }
+
+    .vacunador {
+        position: relative;
+    }
+
+    .vacunador::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: linear-gradient(180deg, #3742fa 0%, #2f3542 100%);
+        border-radius: 0 4px 4px 0;
+    }
+
+    .vacunador .tree-count {
+        background: linear-gradient(135deg, rgba(55, 66, 250, 0.15) 0%, rgba(47, 53, 66, 0.15) 100%);
+        color: #3742fa;
+        border-color: rgba(55, 66, 250, 0.3);
+    }
+
+    .fecha {
+        position: relative;
+    }
+
+    .fecha::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: linear-gradient(180deg, #a55eea 0%, #8854d0 100%);
+        border-radius: 0 4px 4px 0;
+    }
+
+    .fecha .tree-count {
+        background: linear-gradient(135deg, rgba(165, 94, 234, 0.15) 0%, rgba(136, 84, 208, 0.15) 100%);
+        color: #a55eea;
+        border-color: rgba(165, 94, 234, 0.3);
+    }
+
+    .responsable {
+        position: relative;
+    }
+
+    .responsable::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: linear-gradient(180deg, #26de81 0%, #20bf6b 100%);
+        border-radius: 0 4px 4px 0;
+    }
+
+    .responsable .tree-count {
+        background: linear-gradient(135deg, rgba(38, 222, 129, 0.15) 0%, rgba(32, 191, 107, 0.15) 100%);
+        color: #20bf6b;
+        border-color: rgba(38, 222, 129, 0.3);
+    }
+
+    .mascota-item {
+        background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.9) 0%,
+            rgba(248, 250, 252, 0.9) 100%);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        border-radius: 16px;
+        padding: 16px 20px;
+        margin: 10px 0;
+        display: flex;
+        align-items: center;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(10px);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .mascota-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg,
+            rgba(123, 97, 255, 0.05) 0%,
+            rgba(75, 123, 236, 0.05) 100%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .mascota-item:hover {
+        transform: translateX(8px);
+        box-shadow:
+            0 8px 25px rgba(0, 0, 0, 0.08),
+            0 4px 12px rgba(0, 0, 0, 0.04);
+        border-color: rgba(123, 97, 255, 0.3);
+    }
+
+    .mascota-item:hover::before {
+        opacity: 1;
+    }
+
+    .mascota-icon {
+        margin-right: 16px;
+        font-size: 1.4em;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        position: relative;
+        z-index: 1;
+    }
+
+    .mascota-info {
+        flex-grow: 1;
+        position: relative;
+        z-index: 1;
+    }
+
+    .mascota-name {
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 4px;
+        font-size: 1.05em;
+        letter-spacing: -0.01em;
+    }
+
+    .mascota-details {
+        font-size: 0.9em;
+        color: #718096;
+        font-weight: 400;
+    }
+
+    .mascota-badges {
+        display: flex;
+        gap: 8px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .badge {
+        font-size: 0.75em;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        backdrop-filter: blur(10px);
+        border: 1px solid transparent;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .badge-antecedente {
+        background: linear-gradient(135deg, rgba(38, 222, 129, 0.2) 0%, rgba(32, 191, 107, 0.2) 100%);
+        color: #0c7b46;
+        border-color: rgba(38, 222, 129, 0.3);
+    }
+
+    .badge-esterilizado {
+        background: linear-gradient(135deg, rgba(55, 66, 250, 0.2) 0%, rgba(47, 53, 66, 0.2) 100%);
+        color: #1e3a8a;
+        border-color: rgba(55, 66, 250, 0.3);
+    }
+
+    .expand-all-btn {
+        background: linear-gradient(135deg,
+            rgba(123, 97, 255, 1) 0%,
+            rgba(139, 69, 255, 1) 25%,
+            rgba(75, 123, 236, 1) 75%,
+            rgba(56, 178, 172, 1) 100%);
+        color: white;
+        border: none;
+        padding: 16px 32px;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 1.05em;
+        cursor: pointer;
+        margin-bottom: 25px;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow:
+            0 8px 25px rgba(123, 97, 255, 0.4),
+            0 4px 15px rgba(0, 0, 0, 0.1);
+        position: relative;
+        overflow: hidden;
+        letter-spacing: 0.5px;
+    }
+
+    .expand-all-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.1) 0%,
+            rgba(255, 255, 255, 0.05) 100%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .expand-all-btn:hover {
+        transform: translateY(-4px) scale(1.05);
+        box-shadow:
+            0 15px 40px rgba(123, 97, 255, 0.5),
+            0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .expand-all-btn:hover::before {
+        opacity: 1;
+    }
+
+    .loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 200px;
+        flex-direction: column;
+        color: #5f6368;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #1a73e8;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 10px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            box-shadow: 0 0 0 0 rgba(123, 97, 255, 0.4);
+        }
+        50% {
+            box-shadow: 0 0 0 10px rgba(123, 97, 255, 0);
+        }
+    }
+
+    /* Estilos para la barra de filtros */
+    .filters-container {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 25px;
+        padding: 30px;
+        margin-bottom: 35px;
+        box-shadow:
+            0 20px 50px rgba(0, 0, 0, 0.08),
+            0 8px 25px rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .filters-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background:
+            radial-gradient(circle at 10% 20%, rgba(123, 97, 255, 0.05) 0%, transparent 50%),
+            radial-gradient(circle at 90% 80%, rgba(75, 123, 236, 0.05) 0%, transparent 50%);
+        pointer-events: none;
+    }
+
+    .filters-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .filters-title {
+        font-size: 1.6em;
+        font-weight: 700;
+        color: #2d3748;
+        margin: 0;
+        background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.02em;
+    }
+
+    .filters-toggle {
+        background: linear-gradient(135deg,
+            rgba(123, 97, 255, 0.1) 0%,
+            rgba(75, 123, 236, 0.1) 100%);
+        border: 2px solid rgba(123, 97, 255, 0.2);
+        border-radius: 50px;
+        padding: 12px 24px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 0.95em;
+        font-weight: 600;
+        color: #4c51bf;
+        backdrop-filter: blur(10px);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .filters-toggle::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg,
+            rgba(123, 97, 255, 0.1) 0%,
+            rgba(75, 123, 236, 0.1) 100%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .filters-toggle:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(123, 97, 255, 0.25);
+        border-color: rgba(123, 97, 255, 0.4);
+    }
+
+    .filters-toggle:hover::before {
+        opacity: 1;
+    }
+
+    .filters-toggle.active {
+        background: linear-gradient(135deg,
+            rgba(123, 97, 255, 1) 0%,
+            rgba(75, 123, 236, 1) 100%);
+        color: white;
+        border-color: transparent;
+        transform: translateY(-2px);
+        box-shadow: 0 12px 35px rgba(123, 97, 255, 0.4);
+    }
+
+    .filters-content {
+        display: none;
+        position: relative;
+        z-index: 1;
+    }
+
+    .filters-content.expanded {
+        display: block;
+        animation: fadeInDown 0.4s ease;
+    }
+
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 25px;
+        margin-bottom: 25px;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .filter-label {
+        font-weight: 600;
+        color: #4a5568;
+        margin-bottom: 10px;
+        font-size: 0.95em;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+    }
+
+    .filter-input {
+        padding: 14px 16px;
+        border: 2px solid rgba(226, 232, 240, 0.8);
+        border-radius: 15px;
+        font-size: 0.95em;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        color: #2d3748;
+        font-weight: 500;
+    }
+
+    .filter-input:focus {
+        outline: none;
+        border-color: rgba(123, 97, 255, 0.6);
+        box-shadow:
+            0 0 0 4px rgba(123, 97, 255, 0.1),
+            0 8px 25px rgba(123, 97, 255, 0.15);
+        background: rgba(255, 255, 255, 0.95);
+        transform: translateY(-2px);
+    }
+
+    .filter-input::placeholder {
+        color: #a0aec0;
+        font-weight: 400;
+    }
+
+    .filter-checkbox-group {
+        display: flex;
+        gap: 15px;
+        margin-top: 10px;
+    }
+
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.9em;
+        cursor: pointer;
+        padding: 12px 16px;
+        border-radius: 12px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        font-weight: 500;
+        color: #4a5568;
+    }
+
+    .checkbox-item:hover {
+        background: rgba(123, 97, 255, 0.05);
+        border-color: rgba(123, 97, 255, 0.2);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(123, 97, 255, 0.1);
+    }
+
+    .checkbox-item input[type="checkbox"] {
+        margin: 0;
+        transform: scale(1.2);
+        accent-color: #7b61ff;
+        cursor: pointer;
+    }
+
+    .filters-actions {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        justify-content: center;
+        border-top: 1px solid rgba(226, 232, 240, 0.4);
+        padding-top: 25px;
+        margin-top: 25px;
+    }
+
+    .filter-btn {
+        padding: 14px 28px;
+        border: none;
+        border-radius: 50px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 0.95em;
+        letter-spacing: 0.3px;
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+        min-width: 120px;
+    }
+
+    .filter-btn-primary {
+        background: linear-gradient(135deg,
+            rgba(123, 97, 255, 1) 0%,
+            rgba(139, 69, 255, 1) 25%,
+            rgba(75, 123, 236, 1) 75%,
+            rgba(56, 178, 172, 1) 100%);
+        color: white;
+        box-shadow:
+            0 8px 25px rgba(123, 97, 255, 0.4),
+            0 4px 15px rgba(0, 0, 0, 0.1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .filter-btn-primary::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.1) 0%,
+            rgba(255, 255, 255, 0.05) 100%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .filter-btn-primary:hover {
+        transform: translateY(-3px) scale(1.02);
+        box-shadow:
+            0 12px 35px rgba(123, 97, 255, 0.5),
+            0 6px 20px rgba(0, 0, 0, 0.15);
+        animation: pulse 2s infinite;
+    }
+
+    .filter-btn-primary:hover::before {
+        opacity: 1;
+    }
+
+    .filter-btn-secondary {
+        background: rgba(248, 250, 252, 0.8);
+        color: #4a5568;
+        border: 2px solid rgba(226, 232, 240, 0.8);
+        backdrop-filter: blur(10px);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .filter-btn-secondary::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg,
+            rgba(123, 97, 255, 0.05) 0%,
+            rgba(75, 123, 236, 0.05) 100%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .filter-btn-secondary:hover {
+        background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.95) 0%,
+            rgba(248, 250, 252, 0.95) 100%);
+        border-color: rgba(123, 97, 255, 0.4);
+        transform: translateY(-3px) scale(1.02);
+        color: #4c51bf;
+        box-shadow: 0 8px 25px rgba(123, 97, 255, 0.2);
+    }
+
+    .filter-btn-secondary:hover::before {
+        opacity: 1;
+    }
+
+    .active-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 15px;
+    }
+
+    .active-filter-tag {
+        background: #e3f2fd;
+        color: #1565c0;
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 0.8em;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .active-filter-tag .remove-filter {
+        background: none;
+        border: none;
+        color: #1565c0;
+        cursor: pointer;
+        font-weight: bold;
+        margin-left: 4px;
+    }
+
+    .results-summary {
+        background: linear-gradient(135deg,
+            rgba(34, 197, 94, 0.9) 0%,
+            rgba(16, 185, 129, 0.9) 25%,
+            rgba(5, 150, 105, 0.9) 75%,
+            rgba(6, 120, 95, 0.9) 100%);
+        color: white;
+        padding: 25px 35px;
+        border-radius: 20px;
+        margin: 25px 0;
+        text-align: center;
+        font-weight: 600;
+        font-size: 1.1em;
+        box-shadow:
+            0 20px 40px rgba(34, 197, 94, 0.25),
+            0 8px 20px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        position: relative;
+        overflow: hidden;
+        animation: slideInUp 0.5s ease;
+    }
+
+    .results-summary::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background:
+            radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.2) 0%, transparent 50%),
+            radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.15) 0%, transparent 50%);
+        pointer-events: none;
+    }
+
+    .results-summary span {
+        position: relative;
+        z-index: 1;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Estilos para el panel de información */
+    .info-panel {
+        background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.95) 0%,
+            rgba(248, 250, 252, 0.95) 100%);
+        backdrop-filter: blur(20px);
+        border-radius: 25px;
+        padding: 35px;
+        margin: 30px 0;
+        box-shadow:
+            0 20px 50px rgba(0, 0, 0, 0.08),
+            0 8px 25px rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .info-panel::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background:
+            radial-gradient(circle at 15% 25%, rgba(123, 97, 255, 0.05) 0%, transparent 50%),
+            radial-gradient(circle at 85% 75%, rgba(75, 123, 236, 0.05) 0%, transparent 50%);
+        pointer-events: none;
+    }
+
+    .info-header {
+        text-align: center;
+        margin-bottom: 30px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .info-header h3 {
+        font-size: 1.8em;
+        font-weight: 700;
+        color: #2d3748;
+        margin: 0;
+        background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .instruction-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 25px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .instruction-item {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: rgba(255, 255, 255, 0.7);
+        padding: 20px;
+        border-radius: 18px;
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .instruction-item:hover {
+        transform: translateY(-5px) scale(1.02);
+        box-shadow: 0 15px 35px rgba(123, 97, 255, 0.15);
+        background: rgba(255, 255, 255, 0.85);
+    }
+
+    .instruction-icon {
+        font-size: 2.5em;
+        flex-shrink: 0;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    }
+
+    .instruction-text {
+        color: #4a5568;
+        font-size: 0.95em;
+        line-height: 1.5;
+    }
+
+    .instruction-text strong {
+        color: #2d3748;
+        font-weight: 700;
+    }
+
+    /* Estilos para el contenedor principal del árbol */
+    .tree-main-container {
+        background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.95) 0%,
+            rgba(248, 250, 252, 0.95) 100%);
+        backdrop-filter: blur(20px);
+        border-radius: 25px;
+        padding: 35px;
+        margin: 30px 0;
+        box-shadow:
+            0 20px 50px rgba(0, 0, 0, 0.08),
+            0 8px 25px rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .tree-main-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background:
+            radial-gradient(circle at 10% 20%, rgba(34, 197, 94, 0.05) 0%, transparent 50%),
+            radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+        pointer-events: none;
+    }
+
+    .tree-header-section {
+        text-align: center;
+        margin-bottom: 35px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .tree-header-section h3 {
+        font-size: 2.2em;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 15px;
+        background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .tree-description {
+        font-size: 1.1em;
+        color: #4a5568;
+        line-height: 1.6;
+        margin: 0;
+        opacity: 0.9;
+    }
+
+    /* Estilos para mascotas */
+    .mascota-item {
+        background: rgba(255, 255, 255, 0.8);
+        margin: 10px 0;
+        padding: 15px;
+        border-radius: 15px;
+        border: 1px solid rgba(226, 232, 240, 0.6);
+        backdrop-filter: blur(8px);
+        transition: all 0.3s ease;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .mascota-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        background: rgba(255, 255, 255, 0.95);
+    }
+
+    .mascota-content {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        flex-grow: 1;
+    }
+
+    .mascota-icon {
+        font-size: 2em;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    }
+
+    .mascota-info {
+        flex-grow: 1;
+    }
+
+    .mascota-name {
+        font-weight: 700;
+        color: #2d3748;
+        font-size: 1.1em;
+        margin-bottom: 4px;
+    }
+
+    .mascota-details {
+        color: #4a5568;
+        font-size: 0.9em;
+    }
+
+    .mascota-badges {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75em;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .badge-antecedente {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .badge-sin-antecedente {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    .badge-esterilizado {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+    }
+
+    .badge-no-esterilizado {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+
+    .mascota-actions {
+        margin-left: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid tree-container">
+    <div class="stats-header">
+        <div class="header-content">
+            <h1>📊 Sistema de Reportes VetControl</h1>
+            <p class="subtitle">Visualización Jerárquica de Datos de Vacunación</p>
+
+            <div class="hierarchy-explanation">
+                <h3>🗂️ Estructura del Reporte:</h3>
+                <div class="hierarchy-flow">
+                    <div class="hierarchy-item">
+                        <div class="hierarchy-icon">🎯</div>
+                        <div class="hierarchy-text">
+                            <strong>Meta</strong>
+                            <span>Región de Vacunación</span>
+                        </div>
+                    </div>
+                    <div class="hierarchy-arrow">→</div>
+                    <div class="hierarchy-item">
+                        <div class="hierarchy-icon">🏛️</div>
+                        <div class="hierarchy-text">
+                            <strong>Municipio</strong>
+                            <span>Ciudad o Comuna</span>
+                        </div>
+                    </div>
+                    <div class="hierarchy-arrow">→</div>
+                    <div class="hierarchy-item">
+                        <div class="hierarchy-icon">👨‍⚕️</div>
+                        <div class="hierarchy-text">
+                            <strong>Vacunador</strong>
+                            <span>Profesional Veterinario</span>
+                        </div>
+                    </div>
+                    <div class="hierarchy-arrow">→</div>
+                    <div class="hierarchy-item">
+                        <div class="hierarchy-icon">📅</div>
+                        <div class="hierarchy-text">
+                            <strong>Día</strong>
+                            <span>Fecha de Vacunación</span>
+                        </div>
+                    </div>
+                    <div class="hierarchy-arrow">→</div>
+                    <div class="hierarchy-item">
+                        <div class="hierarchy-icon">👥</div>
+                        <div class="hierarchy-text">
+                            <strong>Responsables</strong>
+                            <span>Propietarios de Mascotas</span>
+                        </div>
+                    </div>
+                    <div class="hierarchy-arrow">→</div>
+                    <div class="hierarchy-item">
+                        <div class="hierarchy-icon">🐕</div>
+                        <div class="hierarchy-text">
+                            <strong>Mascotas</strong>
+                            <span>Animales Vacunados</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Cargando estadísticas generales...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de Filtros -->
+    <div class="filters-container">
+        <div class="filters-header">
+            <h3 class="filters-title">🔍 Filtros Avanzados</h3>
+            <button class="filters-toggle" onclick="toggleFilters()">
+                <span id="filtersToggleText">Mostrar Filtros</span>
+            </button>
+        </div>
+
+        <div class="filters-content" id="filtersContent">
+            <div class="filters-grid">
+                <!-- Filtros de Fecha -->
+                <div class="filter-group">
+                    <label class="filter-label">📅 Fecha Inicio</label>
+                    <input type="date" id="fechaInicio" class="filter-input">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">📅 Fecha Fin</label>
+                    <input type="date" id="fechaFin" class="filter-input">
+                </div>
+
+                <!-- Filtro de Municipio -->
+                <div class="filter-group">
+                    <label class="filter-label">🏙️ Municipio</label>
+                    <select id="municipioFilter" class="filter-input">
+                        <option value="">Todos los municipios</option>
+                    </select>
+                </div>
+
+                <!-- Filtro de Vacunador -->
+                <div class="filter-group">
+                    <label class="filter-label">👨‍⚕️ Vacunador</label>
+                    <select id="vacunadorFilter" class="filter-input">
+                        <option value="">Todos los vacunadores</option>
+                    </select>
+                </div>
+
+                <!-- Filtro de Tipo de Mascota -->
+                <div class="filter-group">
+                    <label class="filter-label">🐾 Tipo de Mascota</label>
+                    <select id="tipoMascotaFilter" class="filter-input">
+                        <option value="">Todos los tipos</option>
+                        <option value="perro">🐕 Perros</option>
+                        <option value="gato">🐱 Gatos</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Filtros Especiales -->
+            <div class="filter-group">
+                <label class="filter-label">✨ Filtros Especiales</label>
+                <div class="filter-checkbox-group">
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="soloConAntecedente">
+                        <span>Solo con antecedente vacunal</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="soloEsterilizados">
+                        <span>Solo esterilizados</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Acciones de Filtros -->
+            <div class="filters-actions">
+                <button class="filter-btn filter-btn-primary" onclick="aplicarFiltros()">
+                    <i class="fas fa-search"></i> Aplicar Filtros
+                </button>
+                <button class="filter-btn filter-btn-secondary" onclick="limpiarFiltros()">
+                    <i class="fas fa-eraser"></i> Limpiar Filtros
+                </button>
+                <button class="filter-btn filter-btn-secondary" onclick="exportarResultados()">
+                    <i class="fas fa-download"></i> Exportar
+                </button>
+            </div>
+
+            <!-- Filtros Activos -->
+            <div class="active-filters" id="activeFilters"></div>
+        </div>
+    </div>
+
+    <!-- Resumen de Resultados -->
+    <div class="results-summary" id="resultsSummary" style="display: none;">
+        <span id="summaryText">Mostrando todos los resultados</span>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <button class="expand-all-btn" onclick="toggleAllNodes()">
+            <span id="toggleText">🌳 Expandir Todo</span>
+        </button>
+
+        <button class="btn btn-outline-primary" onclick="refreshData()">
+            <i class="fas fa-sync-alt"></i> Actualizar
+        </button>
+    </div>
+
+    <!-- Sección de Información Previa -->
+    <div class="info-panel">
+        <div class="info-header">
+            <h3>📋 Instrucciones de Uso</h3>
+        </div>
+        <div class="info-content">
+            <div class="instruction-grid">
+                <div class="instruction-item">
+                    <div class="instruction-icon">👆</div>
+                    <div class="instruction-text">
+                        <strong>Haz clic</strong> en cada nivel para expandir y ver los detalles
+                    </div>
+                </div>
+                <div class="instruction-item">
+                    <div class="instruction-icon">🔍</div>
+                    <div class="instruction-text">
+                        <strong>Filtra</strong> los datos usando los filtros avanzados arriba
+                    </div>
+                </div>
+                <div class="instruction-item">
+                    <div class="instruction-icon">📊</div>
+                    <div class="instruction-text">
+                        <strong>Ve totales</strong> de mascotas en cada nivel de la jerarquía
+                    </div>
+                </div>
+                <div class="instruction-item">
+                    <div class="instruction-icon">📄</div>
+                    <div class="instruction-text">
+                        <strong>Exporta</strong> los resultados filtrados a CSV
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor del Árbol Jerárquico -->
+    <div class="tree-main-container">
+        <div class="tree-header-section">
+            <h3>🌳 Árbol de Datos Interactivo</h3>
+            <p class="tree-description">
+                Explora la información de vacunación organizada jerárquicamente.
+                Cada nivel muestra el número total de mascotas registradas.
+            </p>
+        </div>
+
+        <div id="treeContainer">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Cargando árbol de reportes...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Editar Responsable -->
+    <div class="modal fade" id="editResponsableModal" tabindex="-1" aria-labelledby="editResponsableModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editResponsableModalLabel">✏️ Editar Responsable</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editResponsableForm">
+                        <input type="hidden" id="responsableId">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="responsableNombre" class="form-label">👤 Nombre Completo</label>
+                                    <input type="text" class="form-control" id="responsableNombre" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="responsableTelefono" class="form-label">📞 Teléfono</label>
+                                    <input type="text" class="form-control" id="responsableTelefono">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="responsableFinca" class="form-label">🏠 Finca/Predio</label>
+                                    <input type="text" class="form-control" id="responsableFinca">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="responsableZona" class="form-label">📍 Zona de Vacunación</label>
+                                    <input type="text" class="form-control" id="responsableZona">
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveResponsable()">💾 Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Editar Mascota -->
+    <div class="modal fade" id="editMascotaModal" tabindex="-1" aria-labelledby="editMascotaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editMascotaModalLabel">🐾 Editar Mascota</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editMascotaForm">
+                        <input type="hidden" id="mascotaId">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="mascotaNombre" class="form-label">🐾 Nombre de la Mascota</label>
+                                    <input type="text" class="form-control" id="mascotaNombre" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="mascotaTipo" class="form-label">🦮 Tipo</label>
+                                    <select class="form-control" id="mascotaTipo" required>
+                                        <option value="perro">🐕 Perro</option>
+                                        <option value="gato">🐱 Gato</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="mascotaRaza" class="form-label">🏷️ Raza</label>
+                                    <input type="text" class="form-control" id="mascotaRaza">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="mascotaColor" class="form-label">🎨 Color</label>
+                                    <input type="text" class="form-control" id="mascotaColor">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="mascotaAntecedente">
+                                        <label class="form-check-label" for="mascotaAntecedente">
+                                            🏥 Tiene antecedente vacunal
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="mascotaEsterilizado">
+                                        <label class="form-check-label" for="mascotaEsterilizado">
+                                            ✂️ Está esterilizado
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveMascota()">💾 Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let treeData = null;
+let allExpanded = false;
+
+// Variables globales
+let filterOptions = null;
+let currentFilters = {};
+let filtersExpanded = false;
+
+// Cargar datos al inicializar la página
+document.addEventListener('DOMContentLoaded', function() {
+    loadFilterOptions();
+    loadTreeData();
+});
+
+async function loadTreeData() {
+    try {
+        // Mostrar loading
+        document.getElementById('treeContainer').innerHTML = `
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Cargando árbol de reportes...</p>
+            </div>
+        `;
+
+        // Cargar estadísticas
+        const statsResponse = await fetch('/api/reportes/estadisticas/', {
+            headers: {
+                'Authorization': 'Token ' + getAuthToken(),
+                'X-CSRFToken': getCsrfToken()
+            }
+        });
+
+        if (statsResponse.ok) {
+            const statsData = await statsResponse.json();
+            renderStats(statsData);
+        }
+
+        // Cargar árbol
+        const treeResponse = await fetch('/api/reportes/arbol/', {
+            headers: {
+                'Authorization': 'Token ' + getAuthToken(),
+                'X-CSRFToken': getCsrfToken()
+            }
+        });
+
+        if (treeResponse.ok) {
+            treeData = await treeResponse.json();
+            renderTree(treeData);
+        } else {
+            throw new Error('Error al cargar el árbol de reportes');
+        }
+
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('treeContainer').innerHTML = `
+            <div class="alert alert-danger">
+                <h4>Error al cargar los datos</h4>
+                <p>${error.message}</p>
+                <button class="btn btn-primary" onclick="loadTreeData()">Reintentar</button>
+            </div>
+        `;
+    }
+}
+
+function renderStats(data) {
+    const statsGrid = document.getElementById('statsGrid');
+    const totales = data.totales;
+    const porcentajes = data.porcentajes;
+
+    statsGrid.innerHTML = `
+        <div class="stat-card">
+            <div class="stat-number">${totales.mascotas.toLocaleString()}</div>
+            <div class="stat-label">Mascotas Total</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">${totales.responsables.toLocaleString()}</div>
+            <div class="stat-label">Responsables</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">${totales.municipios}</div>
+            <div class="stat-label">Municipios</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">${totales.usuarios_activos}</div>
+            <div class="stat-label">Usuarios Activos</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">${porcentajes.con_antecedente.toFixed(1)}%</div>
+            <div class="stat-label">Con Antecedente</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">${porcentajes.esterilizadas.toFixed(1)}%</div>
+            <div class="stat-label">Esterilizadas</div>
+        </div>
+    `;
+}
+
+function renderTree(data) {
+    const container = document.getElementById('treeContainer');
+    const arbol = data.arbol;
+
+    if (!arbol || arbol.length === 0) {
+        container.innerHTML = `
+            <div class="alert alert-info text-center">
+                <h4>📊 No hay datos disponibles</h4>
+                <p>No se encontraron registros de mascotas en el sistema.</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '<div class="tree-level">';
+
+    arbol.forEach((municipio, mIndex) => {
+        html += renderMunicipio(municipio, mIndex);
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function renderMunicipio(municipio, mIndex) {
+    const nodeId = `municipio-${mIndex}`;
+    const totalVacunadores = municipio.vacunadores.length;
+    const totalMascotas = municipio.total_mascotas;
+    const promedioPorVacunador = totalVacunadores > 0 ? Math.round(totalMascotas / totalVacunadores) : 0;
+
+    return `
+        <div class="tree-node municipio">
+            <div class="tree-header" onclick="toggleNode('${nodeId}')">
+                <span class="tree-icon">🏛️</span>
+                <div class="tree-info">
+                    <div class="tree-title">
+                        <strong>📍 ${municipio.municipio}</strong>
+                    </div>
+                    <div class="tree-details">
+                        <span class="detail-item">👨‍⚕️ ${totalVacunadores} vacunadores activos</span>
+                        <span class="detail-item">📊 Promedio: ${promedioPorVacunador} mascotas/vacunador</span>
+                    </div>
+                </div>
+                <div class="tree-badge">
+                    <span class="badge-number">${totalMascotas.toLocaleString()}</span>
+                    <span class="badge-label">🐾 mascotas</span>
+                </div>
+                <span class="expand-icon" id="${nodeId}-icon">⬇️</span>
+            </div>
+            <div class="tree-content" id="${nodeId}-content">
+                <div class="tree-children">
+                    ${municipio.vacunadores.map((v, vIndex) => renderVacunador(v, `${nodeId}-${vIndex}`)).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderVacunador(vacunador, parentId) {
+    const nodeId = `vacunador-${parentId}`;
+    const totalDias = vacunador.fechas.length;
+    const totalMascotas = vacunador.total_mascotas;
+    const promedioPorDia = totalDias > 0 ? Math.round(totalMascotas / totalDias) : 0;
+
+    return `
+        <div class="tree-node vacunador">
+            <div class="tree-header" onclick="toggleNode('${nodeId}')">
+                <span class="tree-icon">👨‍⚕️</span>
+                <div class="tree-info">
+                    <div class="tree-title">
+                        <strong>🩺 Dr. ${vacunador.nombre}</strong>
+                    </div>
+                    <div class="tree-details">
+                        <span class="detail-item">📅 ${totalDias} días activos</span>
+                        <span class="detail-item">⚡ Promedio: ${promedioPorDia} mascotas/día</span>
+                    </div>
+                </div>
+                <div class="tree-badge">
+                    <span class="badge-number">${totalMascotas.toLocaleString()}</span>
+                    <span class="badge-label">💉 vacunaciones</span>
+                </div>
+                <span class="expand-icon" id="${nodeId}-icon">⬇️</span>
+            </div>
+            <div class="tree-content" id="${nodeId}-content">
+                <div class="tree-children">
+                    ${vacunador.fechas.map((f, fIndex) => renderFecha(f, `${nodeId}-${fIndex}`)).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderFecha(fecha, parentId) {
+    const nodeId = `fecha-${parentId}`;
+    const fechaFormateada = new Date(fecha.fecha).toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    const totalResponsables = fecha.responsables.length;
+    const totalMascotas = fecha.total_mascotas;
+    const promedioPorResponsable = totalResponsables > 0 ? Math.round(totalMascotas / totalResponsables) : 0;
+
+    return `
+        <div class="tree-node fecha">
+            <div class="tree-header" onclick="toggleNode('${nodeId}')">
+                <span class="tree-icon">📅</span>
+                <div class="tree-info">
+                    <div class="tree-title">
+                        <strong>🗓️ ${fechaFormateada}</strong>
+                    </div>
+                    <div class="tree-details">
+                        <span class="detail-item">👥 ${totalResponsables} responsables visitados</span>
+                        <span class="detail-item">📈 Promedio: ${promedioPorResponsable} mascotas/responsable</span>
+                    </div>
+                </div>
+                <div class="tree-badge">
+                    <span class="badge-number">${totalMascotas.toLocaleString()}</span>
+                    <span class="badge-label">🐾 atendidas</span>
+                </div>
+                <span class="expand-icon" id="${nodeId}-icon">⬇️</span>
+            </div>
+            <div class="tree-content" id="${nodeId}-content">
+                <div class="tree-children">
+                    ${fecha.responsables.map((r, rIndex) => renderResponsable(r, `${nodeId}-${rIndex}`)).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderResponsable(responsable, parentId) {
+    const nodeId = `responsable-${parentId}`;
+    const totalMascotas = responsable.mascotas.length;
+    const mascotasConAntecedente = responsable.mascotas.filter(m => m.antecedente_vacunal).length;
+    const mascotasEsterilizadas = responsable.mascotas.filter(m => m.esterilizado).length;
+
+    return `
+        <div class="tree-node responsable">
+            <div class="tree-header">
+                <div class="tree-header-content" onclick="toggleNode('${nodeId}')">
+                    <span class="tree-icon">👤</span>
+                    <div class="tree-info">
+                        <div class="tree-title">
+                            <strong>🏠 ${responsable.nombre}</strong>
+                        </div>
+                        <div class="tree-details">
+                            <span class="detail-item">🏥 ${mascotasConAntecedente}/${totalMascotas} con antecedente</span>
+                            <span class="detail-item">✂️ ${mascotasEsterilizadas}/${totalMascotas} esterilizadas</span>
+                        </div>
+                    </div>
+                    <div class="tree-badge">
+                        <span class="badge-number">${totalMascotas}</span>
+                        <span class="badge-label">🐾 mascotas</span>
+                    </div>
+                    <span class="expand-icon" id="${nodeId}-icon">⬇️</span>
+                </div>
+                <div class="tree-actions">
+                    <button class="edit-btn" onclick="editResponsable(event, '${responsable.id}', '${responsable.nombre}', '${responsable.telefono || ''}', '${responsable.finca_nombre_predio || ''}', '${responsable.zona_vacunacion || ''}')" title="Editar Responsable">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="tree-content" id="${nodeId}-content">
+                <div class="tree-children">
+                    ${responsable.mascotas.map(m => renderMascota(m)).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderMascota(mascota) {
+    const antecedenteIcon = mascota.antecedente_vacunal ? '✅' : '❌';
+    const esterilizadoIcon = mascota.esterilizado ? '✂️' : '';
+    const tipoIcon = mascota.tipo === 'perro' ? '🐕' : '🐱';
+
+    return `
+        <div class="mascota-item">
+            <div class="mascota-content">
+                <span class="mascota-icon">${tipoIcon}</span>
+                <div class="mascota-info">
+                    <div class="mascota-name">${mascota.nombre}</div>
+                    <div class="mascota-details">${mascota.tipo} • ${mascota.raza} • ${mascota.color}</div>
+                </div>
+                <div class="mascota-badges">
+                    ${mascota.antecedente_vacunal ? '<span class="badge badge-antecedente">Antecedente ✓</span>' : '<span class="badge badge-sin-antecedente">Sin antecedente ❌</span>'}
+                    ${mascota.esterilizado ? '<span class="badge badge-esterilizado">Esterilizado ✂️</span>' : '<span class="badge badge-no-esterilizado">No esterilizado</span>'}
+                </div>
+            </div>
+            <div class="mascota-actions">
+                <button class="edit-btn edit-btn-small" onclick="editMascota(event, '${mascota.id}', '${mascota.nombre}', '${mascota.tipo}', '${mascota.raza}', '${mascota.color}', ${mascota.antecedente_vacunal}, ${mascota.esterilizado})" title="Editar Mascota">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function toggleNode(nodeId) {
+    const content = document.getElementById(nodeId + '-content');
+    const icon = document.getElementById(nodeId + '-icon');
+    const header = content.previousElementSibling;
+
+    if (content.classList.contains('expanded')) {
+        content.classList.remove('expanded');
+        icon.classList.remove('expanded');
+        header.classList.remove('expanded');
+        icon.innerHTML = '⬇️';
+    } else {
+        content.classList.add('expanded');
+        icon.classList.add('expanded');
+        header.classList.add('expanded');
+        icon.innerHTML = '⬆️';
+    }
+}
+
+function toggleAllNodes() {
+    const allContents = document.querySelectorAll('.tree-content');
+    const allIcons = document.querySelectorAll('.expand-icon');
+    const allHeaders = document.querySelectorAll('.tree-header');
+    const toggleText = document.getElementById('toggleText');
+
+    allExpanded = !allExpanded;
+
+    allContents.forEach((content, index) => {
+        const icon = allIcons[index];
+        const header = allHeaders[index];
+
+        if (allExpanded) {
+            content.classList.add('expanded');
+            icon.classList.add('expanded');
+            header.classList.add('expanded');
+            icon.innerHTML = '⬆️';
+        } else {
+            content.classList.remove('expanded');
+            icon.classList.remove('expanded');
+            header.classList.remove('expanded');
+            icon.innerHTML = '⬇️';
+        }
+    });
+
+    toggleText.innerHTML = allExpanded ? '🌲 Colapsar Todo' : '🌳 Expandir Todo';
+}
+
+function refreshData() {
+    loadTreeData();
+}
+
+function getAuthToken() {
+    // Obtener token del almacenamiento local o cookie
+    return localStorage.getItem('authToken') || '';
+}
+
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+
+// Funciones para manejar filtros
+async function loadFilterOptions() {
+    try {
+        const response = await fetch('/api/reportes/filtros/', {
+            headers: {
+                'Authorization': 'Token ' + getAuthToken(),
+                'X-CSRFToken': getCsrfToken()
+            }
+        });
+
+        if (response.ok) {
+            filterOptions = await response.json();
+            populateFilterOptions();
+        }
+    } catch (error) {
+        console.error('Error cargando opciones de filtros:', error);
+    }
+}
+
+function populateFilterOptions() {
+    if (!filterOptions) return;
+
+    // Poblar municipios
+    const municipioSelect = document.getElementById('municipioFilter');
+    filterOptions.municipios.forEach(municipio => {
+        const option = document.createElement('option');
+        option.value = municipio;
+        option.textContent = municipio;
+        municipioSelect.appendChild(option);
+    });
+
+    // Poblar vacunadores
+    const vacunadorSelect = document.getElementById('vacunadorFilter');
+    filterOptions.vacunadores.forEach(vacunador => {
+        const option = document.createElement('option');
+        option.value = vacunador.id;
+        option.textContent = vacunador.nombre_display;
+        vacunadorSelect.appendChild(option);
+    });
+
+    // Configurar rangos de fecha
+    if (filterOptions.fecha_min) {
+        document.getElementById('fechaInicio').min = filterOptions.fecha_min;
+        document.getElementById('fechaFin').min = filterOptions.fecha_min;
+    }
+    if (filterOptions.fecha_max) {
+        document.getElementById('fechaInicio').max = filterOptions.fecha_max;
+        document.getElementById('fechaFin').max = filterOptions.fecha_max;
+    }
+}
+
+function toggleFilters() {
+    const content = document.getElementById('filtersContent');
+    const toggle = document.querySelector('.filters-toggle');
+    const toggleText = document.getElementById('filtersToggleText');
+
+    filtersExpanded = !filtersExpanded;
+
+    if (filtersExpanded) {
+        content.classList.add('expanded');
+        toggle.classList.add('active');
+        toggleText.textContent = 'Ocultar Filtros';
+    } else {
+        content.classList.remove('expanded');
+        toggle.classList.remove('active');
+        toggleText.textContent = 'Mostrar Filtros';
+    }
+}
+
+function aplicarFiltros() {
+    // Recopilar valores de filtros
+    currentFilters = {
+        fecha_inicio: document.getElementById('fechaInicio').value,
+        fecha_fin: document.getElementById('fechaFin').value,
+        municipio: document.getElementById('municipioFilter').value,
+        vacunador: document.getElementById('vacunadorFilter').value,
+        tipo_mascota: document.getElementById('tipoMascotaFilter').value,
+        solo_con_antecedente: document.getElementById('soloConAntecedente').checked,
+        solo_esterilizados: document.getElementById('soloEsterilizados').checked,
+    };
+
+    // Actualizar la visualización
+    updateActiveFilters();
+    updateResultsSummary();
+    loadTreeDataWithFilters();
+}
+
+function limpiarFiltros() {
+    // Limpiar todos los campos
+    document.getElementById('fechaInicio').value = '';
+    document.getElementById('fechaFin').value = '';
+    document.getElementById('municipioFilter').value = '';
+    document.getElementById('vacunadorFilter').value = '';
+    document.getElementById('tipoMascotaFilter').value = '';
+    document.getElementById('soloConAntecedente').checked = false;
+    document.getElementById('soloEsterilizados').checked = false;
+
+    currentFilters = {};
+    updateActiveFilters();
+    updateResultsSummary();
+    loadTreeData();
+}
+
+function updateActiveFilters() {
+    const activeFiltersContainer = document.getElementById('activeFilters');
+    activeFiltersContainer.innerHTML = '';
+
+    const filterLabels = {
+        fecha_inicio: '📅 Desde',
+        fecha_fin: '📅 Hasta',
+        municipio: '🏙️ Municipio',
+        vacunador: '👨‍⚕️ Vacunador',
+        tipo_mascota: '🐾 Tipo',
+        solo_con_antecedente: '✅ Con antecedente',
+        solo_esterilizados: '✂️ Esterilizados',
+    };
+
+    Object.entries(currentFilters).forEach(([key, value]) => {
+        if (!value || value === '' || value === false) return;
+
+        const tag = document.createElement('div');
+        tag.className = 'active-filter-tag';
+
+        let displayValue = value;
+        if (key === 'vacunador' && filterOptions) {
+            const vacunador = filterOptions.vacunadores.find(v => v.id == value);
+            displayValue = vacunador ? vacunador.nombre_display : value;
+        } else if (key === 'tipo_mascota') {
+            displayValue = value === 'perro' ? '🐕 Perros' : '🐱 Gatos';
+        } else if (typeof value === 'boolean') {
+            displayValue = '✓';
+        }
+
+        tag.innerHTML = `
+            ${filterLabels[key]}: ${displayValue}
+            <button class="remove-filter" onclick="removeFilter('${key}')">×</button>
+        `;
+
+        activeFiltersContainer.appendChild(tag);
+    });
+}
+
+function removeFilter(filterKey) {
+    delete currentFilters[filterKey];
+
+    // Actualizar el campo correspondiente
+    const fieldMap = {
+        fecha_inicio: 'fechaInicio',
+        fecha_fin: 'fechaFin',
+        municipio: 'municipioFilter',
+        vacunador: 'vacunadorFilter',
+        tipo_mascota: 'tipoMascotaFilter',
+        solo_con_antecedente: 'soloConAntecedente',
+        solo_esterilizados: 'soloEsterilizados',
+    };
+
+    const field = document.getElementById(fieldMap[filterKey]);
+    if (field) {
+        if (field.type === 'checkbox') {
+            field.checked = false;
+        } else {
+            field.value = '';
+        }
+    }
+
+    updateActiveFilters();
+    updateResultsSummary();
+    loadTreeDataWithFilters();
+}
+
+function updateResultsSummary() {
+    const summary = document.getElementById('resultsSummary');
+    const summaryText = document.getElementById('summaryText');
+
+    const activeFilterCount = Object.values(currentFilters).filter(v => v && v !== '' && v !== false).length;
+
+    if (activeFilterCount > 0) {
+        summary.style.display = 'block';
+        summaryText.textContent = `🔍 Mostrando resultados con ${activeFilterCount} filtro${activeFilterCount > 1 ? 's' : ''} aplicado${activeFilterCount > 1 ? 's' : ''}`;
+    } else {
+        summary.style.display = 'none';
+    }
+}
+
+async function loadTreeDataWithFilters() {
+    try {
+        // Construir URL con parámetros de filtro
+        const params = new URLSearchParams();
+
+        Object.entries(currentFilters).forEach(([key, value]) => {
+            if (value && value !== '' && value !== false) {
+                params.append(key, value.toString());
+            }
+        });
+
+        const url = `/api/reportes/arbol/?${params.toString()}`;
+
+        // Mostrar loading
+        document.getElementById('treeContainer').innerHTML = `
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Aplicando filtros...</p>
+            </div>
+        `;
+
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': 'Token ' + getAuthToken(),
+                'X-CSRFToken': getCsrfToken()
+            }
+        });
+
+        if (response.ok) {
+            treeData = await response.json();
+            renderTree(treeData);
+
+            // Actualizar estadísticas si es necesario
+            const summaryText = document.getElementById('summaryText');
+            summaryText.textContent = `🔍 Mostrando ${treeData.total_mascotas} mascotas en ${treeData.total_municipios} municipios`;
+        } else {
+            throw new Error('Error al aplicar filtros');
+        }
+
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('treeContainer').innerHTML = `
+            <div class="alert alert-danger">
+                <h4>Error al aplicar filtros</h4>
+                <p>${error.message}</p>
+                <button class="btn btn-primary" onclick="loadTreeData()">Cargar todos los datos</button>
+            </div>
+        `;
+    }
+}
+
+function exportarResultados() {
+    // Función para exportar los resultados actuales
+    if (!treeData) {
+        alert('No hay datos para exportar');
+        return;
+    }
+
+    // Crear CSV con los datos filtrados
+    let csvContent = 'Municipio,Vacunador,Fecha,Responsable,Mascota,Tipo,Raza,Color,Antecedente Vacunal,Esterilizado\n';
+
+    treeData.arbol.forEach(municipio => {
+        municipio.vacunadores.forEach(vacunador => {
+            vacunador.fechas.forEach(fecha => {
+                fecha.responsables.forEach(responsable => {
+                    responsable.mascotas.forEach(mascota => {
+                        csvContent += `"${municipio.municipio}","${vacunador.nombre}","${fecha.fecha}","${responsable.nombre}","${mascota.nombre}","${mascota.tipo}","${mascota.raza}","${mascota.color}","${mascota.antecedente_vacunal ? 'Sí' : 'No'}","${mascota.esterilizado ? 'Sí' : 'No'}"\n`;
+                    });
+                });
+            });
+        });
+    });
+
+    // Descargar CSV
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `arbol_reportes_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+// Funciones de edición
+function editResponsable(event, id, nombre, telefono, finca, zona) {
+    event.stopPropagation();
+
+    // Llenar el modal con los datos actuales
+    document.getElementById('responsableId').value = id;
+    document.getElementById('responsableNombre').value = nombre;
+    document.getElementById('responsableTelefono').value = telefono;
+    document.getElementById('responsableFinca').value = finca;
+    document.getElementById('responsableZona').value = zona;
+
+    // Mostrar el modal
+    const modal = new bootstrap.Modal(document.getElementById('editResponsableModal'));
+    modal.show();
+}
+
+function editMascota(event, id, nombre, tipo, raza, color, antecedente, esterilizado) {
+    event.stopPropagation();
+
+    // Llenar el modal con los datos actuales
+    document.getElementById('mascotaId').value = id;
+    document.getElementById('mascotaNombre').value = nombre;
+    document.getElementById('mascotaTipo').value = tipo;
+    document.getElementById('mascotaRaza').value = raza;
+    document.getElementById('mascotaColor').value = color;
+    document.getElementById('mascotaAntecedente').checked = antecedente;
+    document.getElementById('mascotaEsterilizado').checked = esterilizado;
+
+    // Mostrar el modal
+    const modal = new bootstrap.Modal(document.getElementById('editMascotaModal'));
+    modal.show();
+}
+
+async function saveResponsable() {
+    const id = document.getElementById('responsableId').value;
+    const nombre = document.getElementById('responsableNombre').value;
+    const telefono = document.getElementById('responsableTelefono').value;
+    const finca = document.getElementById('responsableFinca').value;
+    const zona = document.getElementById('responsableZona').value;
+
+    if (!nombre.trim()) {
+        alert('❌ El nombre es obligatorio');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/responsables/${id}/`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Token ' + getAuthToken(),
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                nombre: nombre,
+                telefono: telefono,
+                finca_nombre_predio: finca,
+                zona_vacunacion: zona
+            })
+        });
+
+        if (response.ok) {
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editResponsableModal'));
+            modal.hide();
+
+            // Mostrar mensaje de éxito
+            showSuccessMessage('✅ Responsable actualizado correctamente');
+
+            // Recargar el árbol
+            loadTreeData();
+        } else {
+            const error = await response.json();
+            alert('❌ Error al guardar: ' + (error.message || 'Error desconocido'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión al guardar el responsable');
+    }
+}
+
+async function saveMascota() {
+    const id = document.getElementById('mascotaId').value;
+    const nombre = document.getElementById('mascotaNombre').value;
+    const tipo = document.getElementById('mascotaTipo').value;
+    const raza = document.getElementById('mascotaRaza').value;
+    const color = document.getElementById('mascotaColor').value;
+    const antecedente = document.getElementById('mascotaAntecedente').checked;
+    const esterilizado = document.getElementById('mascotaEsterilizado').checked;
+
+    if (!nombre.trim()) {
+        alert('❌ El nombre de la mascota es obligatorio');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/mascotas/${id}/`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Token ' + getAuthToken(),
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                nombre: nombre,
+                tipo: tipo,
+                raza: raza,
+                color: color,
+                antecedente_vacunal: antecedente,
+                esterilizado: esterilizado
+            })
+        });
+
+        if (response.ok) {
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editMascotaModal'));
+            modal.hide();
+
+            // Mostrar mensaje de éxito
+            showSuccessMessage('✅ Mascota actualizada correctamente');
+
+            // Recargar el árbol
+            loadTreeData();
+        } else {
+            const error = await response.json();
+            alert('❌ Error al guardar: ' + (error.message || 'Error desconocido'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión al guardar la mascota');
+    }
+}
+
+function showSuccessMessage(message) {
+    // Crear elemento de notificación
+    const notification = document.createElement('div');
+    notification.className = 'alert alert-success alert-dismissible fade show position-fixed';
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Auto-remover después de 3 segundos
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 3000);
+}
+</script>
+{% endblock %}

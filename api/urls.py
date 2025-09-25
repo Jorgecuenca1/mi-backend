@@ -36,4 +36,14 @@ urlpatterns = [
 
     # URL para reporte PDF de vacunadores
     path('reporte/vacunador/pdf/', views.reporte_vacunador_pdf, name='reporte_vacunador_pdf'),
+
+    # URLs para el árbol de reportes (solo administradores)
+    path('reportes/arbol/', views.arbol_reportes, name='arbol_reportes'),
+    path('reportes/estadisticas/', views.estadisticas_generales, name='estadisticas_generales'),
+    path('reportes/filtros/', views.opciones_filtros_reportes, name='opciones_filtros_reportes'),
+    path('reportes/arbol-web/', views.arbol_reportes_view, name='arbol_reportes_view'),
+
+    # URLs para edición de responsables y mascotas
+    path('responsables/<int:responsable_id>/', views.update_responsable, name='update_responsable'),
+    path('mascotas/<int:mascota_id>/', views.update_mascota, name='update_mascota'),
 ]

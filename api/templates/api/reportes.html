@@ -42,6 +42,27 @@
     {% endif %}
 </section>
 
+<!-- Enlaces de Administrador -->
+{% if user.tipo_usuario == 'administrador' %}
+<section class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white; margin-bottom: 2rem;">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h3 style="color: white; margin-bottom: 0.5rem;">🌳 Árbol Jerárquico de Reportes</h3>
+                <p style="color: rgba(255,255,255,0.9); margin-bottom: 0; font-size: 0.95rem;">
+                    Vista detallada por Meta → Municipio → Vacunador → Día → Responsable → Mascota
+                </p>
+            </div>
+            <div class="col-md-4 text-right">
+                <a href="{% url 'arbol_reportes_web' %}" class="btn btn-light btn-lg" style="font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <i class="fas fa-sitemap"></i> Ver Árbol
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
 <!-- Summary Stats -->
 <section class="card">
     <div class="card-header">
