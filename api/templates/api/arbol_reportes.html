@@ -1,4 +1,4 @@
-<!-- api/templates/api/arbol_reportes.html -->
+<!-- api/templates/api/arbol_reportes.html - Updated for indentation -->
 {% extends 'api/base.html' %}
 
 {% block title %}Árbol de Reportes - VetControl{% endblock %}
@@ -249,7 +249,35 @@
         transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         border: 1px solid rgba(255, 255, 255, 0.2);
         overflow: hidden;
+        position: relative;
     }
+
+    /* ✅ Cada nivel anidado empuja a la derecha a sus hijos */
+    .tree-children {
+        margin-left: 40px;
+        position: relative;
+    }
+
+    /* Opcional: mantén la guía vertical ya existente */
+    .tree-children::before {
+        content: '';
+        position: absolute;
+        left: -8px;
+        top: 0;
+        bottom: 20px;
+        width: 2px;
+        background: linear-gradient(180deg,
+            rgba(123, 97, 255, 0.3) 0%,
+            rgba(75, 123, 236, 0.3) 50%,
+            transparent 100%);
+        border-radius: 2px;
+    }
+
+    /* Ajuste fino de separación */
+    .tree-node .tree-children {
+        padding-left: 4px;
+    }
+
 
     .tree-node:hover {
         box-shadow:
@@ -508,10 +536,7 @@
         display: block;
     }
 
-    .tree-children {
-        margin-left: 15px;
-        position: relative;
-    }
+
 
     .tree-children::before {
         content: '';
@@ -2163,7 +2188,7 @@ function renderMunicipioCompacto(municipio, mIndex) {
                     <span class="tree-icon">🏛️</span>
                     <div class="tree-info">
                         <div class="tree-title">
-                            <strong>📍 ${municipio.municipio}</strong>
+                            <strong>*1 📍 ${municipio.municipio}</strong>
                         </div>
                         <div class="tree-details">
                             <span class="detail-item">👨‍⚕️ ${totalVacunadores} vacunadores</span>
@@ -2200,7 +2225,7 @@ function renderMunicipio(municipio, mIndex) {
                     <span class="tree-icon">🏛️</span>
                     <div class="tree-info">
                         <div class="tree-title">
-                            <strong>📍 ${municipio.municipio}</strong>
+                            <strong>*1 📍 ${municipio.municipio}</strong>
                         </div>
                         <div class="tree-details">
                             <span class="detail-item">👨‍⚕️ ${totalVacunadores} vacunadores activos</span>
@@ -2237,7 +2262,7 @@ function renderVacunador(vacunador, parentId, municipio) {
                     <span class="tree-icon">👨‍⚕️</span>
                     <div class="tree-info">
                         <div class="tree-title">
-                            <strong>🩺 Dr. ${vacunador.nombre}</strong>
+                            <strong>**2 🩺 Dr. ${vacunador.nombre}</strong>
                         </div>
                         <div class="tree-details">
                             <span class="detail-item">📅 ${totalDias} días activos</span>
@@ -2286,7 +2311,7 @@ function renderFecha(fecha, parentId) {
                     <span class="tree-icon">📅</span>
                     <div class="tree-info">
                         <div class="tree-title">
-                            <strong>🗓️ ${fechaFormateada}</strong>
+                            <strong>***3 🗓️ ${fechaFormateada}</strong>
                         </div>
                         <div class="tree-details">
                             <span class="detail-item">👥 ${totalResponsables} responsables visitados</span>
@@ -2323,7 +2348,7 @@ function renderResponsable(responsable, parentId) {
                     <span class="tree-icon">👤</span>
                     <div class="tree-info">
                         <div class="tree-title">
-                            <strong>🏠 ${responsable.nombre}</strong>
+                            <strong>****4 🏠 ${responsable.nombre}</strong>
                         </div>
                         <div class="tree-details">
                             <span class="detail-item">🏥 ${mascotasConAntecedente}/${totalMascotas} con antecedente</span>
