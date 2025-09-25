@@ -230,12 +230,21 @@ def mis_planillas(request):
 
     Reglas:
     - Si viene ?usuario=<username>, filtra por ese username (útil para apps móviles).
+    - Si viene ?municipio=<municipio>, filtra por ese municipio.
     - En otro caso, filtra por el usuario autenticado (request.user).
     - Incluye planillas donde el usuario es asignado principal O adicional.
     """
     username = request.query_params.get('usuario') or request.user.username
+    municipio = request.query_params.get('municipio')
+
     qs = Planilla.objects.all()
-    if username:
+
+    # Filtrar por municipio si se proporciona
+    if municipio:
+        qs = qs.filter(municipio__icontains=municipio)
+
+    # Filtrar por usuario
+    if username and not municipio:  # Solo filtrar por usuario si no estamos filtrando por municipio
         # Filtrar por asignaciones principales Y adicionales
         qs = qs.filter(
             Q(assigned_to__username=username) |  # Vacunador principal (compatibilidad app móvil)
@@ -243,6 +252,7 @@ def mis_planillas(request):
             Q(tecnico_asignado__username=username) |  # Técnico principal
             Q(tecnicos_adicionales__username=username)  # Técnicos adicionales
         ).distinct()
+
     return Response(PlanillaSerializer(qs, many=True, context={'request': request}).data)
 
 
@@ -1374,30 +1384,61 @@ def arbol_reportes(request):
                     responsable_mascotas = len(mascotas_list)
                     fecha_mascotas += responsable_mascotas
 
+                    # Contar perros y gatos para este responsable
+                    responsable_perros = len([m for m in mascotas_list if m['tipo'] == 'perro'])
+                    responsable_gatos = len([m for m in mascotas_list if m['tipo'] == 'gato'])
+
                     responsables_list.append({
+                        'id': mascotas_list[0]['responsable']['id'] if mascotas_list else None,
                         'nombre': responsable_nombre,
+                        'telefono': mascotas_list[0]['responsable']['telefono'] if mascotas_list else '',
+                        'finca_nombre_predio': mascotas_list[0]['responsable']['finca'] if mascotas_list else '',
+                        'zona_vacunacion': mascotas_list[0]['responsable']['zona'] if mascotas_list else '',
                         'total_mascotas': responsable_mascotas,
+                        'total_perros': responsable_perros,
+                        'total_gatos': responsable_gatos,
                         'mascotas': mascotas_list
                     })
 
                 vacunador_mascotas += fecha_mascotas
+
+                # Contar perros y gatos para esta fecha
+                fecha_perros = sum(r['total_perros'] for r in responsables_list)
+                fecha_gatos = sum(r['total_gatos'] for r in responsables_list)
+
                 fechas_list.append({
                     'fecha': fecha,
                     'total_mascotas': fecha_mascotas,
+                    'total_perros': fecha_perros,
+                    'total_gatos': fecha_gatos,
                     'responsables': responsables_list
                 })
 
             municipio_mascotas += vacunador_mascotas
+
+            # Contar perros y gatos para este vacunador
+            vacunador_perros = sum(f['total_perros'] for f in fechas_list)
+            vacunador_gatos = sum(f['total_gatos'] for f in fechas_list)
+
             vacunadores_list.append({
                 'nombre': vacunador,
                 'total_mascotas': vacunador_mascotas,
+                'total_perros': vacunador_perros,
+                'total_gatos': vacunador_gatos,
                 'fechas': fechas_list
             })
 
         total_mascotas += municipio_mascotas
+
+        # Contar perros y gatos para este municipio
+        municipio_perros = sum(v['total_perros'] for v in vacunadores_list)
+        municipio_gatos = sum(v['total_gatos'] for v in vacunadores_list)
+
         resultado.append({
             'municipio': municipio,
             'total_mascotas': municipio_mascotas,
+            'total_perros': municipio_perros,
+            'total_gatos': municipio_gatos,
             'vacunadores': vacunadores_list
         })
 

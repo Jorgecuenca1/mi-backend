@@ -320,6 +320,63 @@
         font-size: 1em;
     }
 
+    .add-btn {
+        background: linear-gradient(135deg,
+            rgba(34, 197, 94, 0.9) 0%,
+            rgba(22, 163, 74, 0.9) 100%);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        margin-left: 8px;
+    }
+
+    .add-btn:hover {
+        transform: translateY(-2px) scale(1.1);
+        box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
+        background: linear-gradient(135deg,
+            rgba(22, 163, 74, 1) 0%,
+            rgba(21, 128, 61, 1) 100%);
+    }
+
+    .add-btn i {
+        font-size: 1em;
+    }
+
+    .municipio-compact {
+        margin-bottom: 15px;
+        transition: all 0.3s ease;
+    }
+
+    .municipio-compact:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .municipio-compact .tree-header {
+        background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.9) 0%,
+            rgba(248, 250, 252, 0.9) 100%);
+        border: 2px solid rgba(59, 130, 246, 0.2);
+        border-radius: 15px;
+        padding: 20px;
+        cursor: pointer;
+    }
+
+    .municipio-compact .expand-icon {
+        font-size: 1.2em;
+        color: #3b82f6;
+    }
+
     .tree-header::before {
         content: '';
         position: absolute;
@@ -1700,6 +1757,243 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal para Agregar Responsable -->
+    <div class="modal fade" id="addResponsableModal" tabindex="-1" aria-labelledby="addResponsableModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addResponsableModalLabel">
+                        ➕ Agregar Nuevo Responsable
+                        <br><small class="text-muted">Vacunador: <span id="newResponsableVacunadorNombre"></span></small>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="newResponsableForm">
+                        <input type="hidden" id="newResponsableVacunadorId">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="newResponsableNombre" class="form-label">👤 Nombre Completo *</label>
+                                    <input type="text" class="form-control" id="newResponsableNombre" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="newResponsableTelefono" class="form-label">📞 Teléfono</label>
+                                    <input type="text" class="form-control" id="newResponsableTelefono">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="newResponsableFinca" class="form-label">🏠 Finca/Predio</label>
+                                    <input type="text" class="form-control" id="newResponsableFinca">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="newResponsableZona" class="form-label">📍 Zona de Vacunación</label>
+                                    <input type="text" class="form-control" id="newResponsableZona">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="newResponsableLote" class="form-label">💉 Lote de Vacuna</label>
+                                    <input type="text" class="form-control" id="newResponsableLote">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sección para agregar mascotas -->
+                        <hr>
+                        <h6>🐾 Mascotas del Responsable</h6>
+                        <div id="mascotasContainer">
+                            <div class="mascota-item" data-index="0">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">🐾 Nombre de la Mascota *</label>
+                                            <input type="text" class="form-control mascota-nombre" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="mb-3">
+                                            <label class="form-label">🐕/🐱 Tipo *</label>
+                                            <select class="form-control mascota-tipo" required>
+                                                <option value="">Seleccionar...</option>
+                                                <option value="perro">🐕 Perro</option>
+                                                <option value="gato">🐱 Gato</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="mb-3">
+                                            <label class="form-label">🌈 Color *</label>
+                                            <input type="text" class="form-control mascota-color" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="mb-3">
+                                            <label class="form-label">🏷️ Raza</label>
+                                            <input type="text" class="form-control mascota-raza">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <div class="mb-3">
+                                            <label class="form-label">&nbsp;</label>
+                                            <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeMascota(0)" style="display: none;">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">📍 Latitud</label>
+                                            <input type="number" step="any" class="form-control mascota-latitud" placeholder="4.7110">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">📍 Longitud</label>
+                                            <input type="number" step="any" class="form-control mascota-longitud" placeholder="-74.0721">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">📷 Foto</label>
+                                            <input type="file" class="form-control mascota-foto" accept="image/*">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input mascota-antecedente" type="checkbox">
+                                            <label class="form-check-label">🏥 Antecedente vacunal</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input mascota-esterilizado" type="checkbox">
+                                            <label class="form-check-label">✂️ Esterilizado</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addMascotaToForm()">
+                            <i class="fas fa-plus"></i> Agregar otra mascota
+                        </button>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="saveNewResponsable()">💾 Crear Responsable</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Agregar Mascota -->
+    <div class="modal fade" id="addMascotaModal" tabindex="-1" aria-labelledby="addMascotaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addMascotaModalLabel">
+                        ➕ Agregar Nueva Mascota
+                        <br><small class="text-muted">Responsable: <span id="newMascotaResponsableNombre"></span></small>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="newMascotaForm">
+                        <input type="hidden" id="newMascotaResponsableId">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="newMascotaNombre" class="form-label">🐾 Nombre de la Mascota *</label>
+                                    <input type="text" class="form-control" id="newMascotaNombre" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="newMascotaTipo" class="form-label">🐕/🐱 Tipo *</label>
+                                    <select class="form-control" id="newMascotaTipo" required>
+                                        <option value="">Seleccionar...</option>
+                                        <option value="perro">🐕 Perro</option>
+                                        <option value="gato">🐱 Gato</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="newMascotaColor" class="form-label">🌈 Color *</label>
+                                    <input type="text" class="form-control" id="newMascotaColor" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="newMascotaRaza" class="form-label">🏷️ Raza</label>
+                                    <input type="text" class="form-control" id="newMascotaRaza">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="newMascotaLatitud" class="form-label">📍 Latitud</label>
+                                    <input type="number" step="any" class="form-control" id="newMascotaLatitud" placeholder="Ej: 4.7110">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="newMascotaLongitud" class="form-label">📍 Longitud</label>
+                                    <input type="number" step="any" class="form-control" id="newMascotaLongitud" placeholder="Ej: -74.0721">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="newMascotaFoto" class="form-label">📷 Foto de la Mascota</label>
+                                    <input type="file" class="form-control" id="newMascotaFoto" accept="image/*">
+                                    <small class="text-muted">Formatos permitidos: JPG, PNG, GIF (máximo 5MB)</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="newMascotaAntecedente">
+                                    <label class="form-check-label" for="newMascotaAntecedente">🏥 Antecedente vacunal</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="newMascotaEsterilizado">
+                                    <label class="form-check-label" for="newMascotaEsterilizado">✂️ Esterilizado</label>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="saveNewMascota()">💾 Crear Mascota</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -1707,6 +2001,8 @@
 <script>
 let treeData = null;
 let allExpanded = false;
+let compactMode = true; // Nuevo: modo compacto (solo municipios inicialmente)
+let selectedMunicipio = null; // Municipio seleccionado para expandir
 
 // Variables globales
 let filterOptions = null;
@@ -1816,14 +2112,79 @@ function renderTree(data) {
         return;
     }
 
-    let html = '<div class="tree-level">';
+    let html = '';
 
-    arbol.forEach((municipio, mIndex) => {
-        html += renderMunicipio(municipio, mIndex);
-    });
+    // Agregar botón para volver al modo compacto si estamos en modo expandido
+    if (!compactMode && selectedMunicipio) {
+        html += `
+            <div class="mb-3">
+                <button class="btn btn-outline-secondary btn-sm" onclick="volverModoCompacto()">
+                    <i class="fas fa-arrow-left"></i> Volver a lista de municipios
+                </button>
+                <span class="ms-2 text-muted">Mostrando detalles de: <strong>${selectedMunicipio}</strong></span>
+            </div>
+        `;
+    }
+
+    html += '<div class="tree-level">';
+
+    if (compactMode) {
+        // Modo compacto: mostrar solo municipios
+        html += '<div class="alert alert-info mb-3">';
+        html += '<i class="fas fa-info-circle"></i> ';
+        html += 'Haga clic en un municipio para ver los detalles completos';
+        html += '</div>';
+
+        arbol.forEach((municipio, mIndex) => {
+            html += renderMunicipioCompacto(municipio, mIndex);
+        });
+    } else {
+        // Modo expandido: mostrar el árbol completo del municipio seleccionado
+        const municipioSeleccionado = arbol.find(m => m.municipio === selectedMunicipio);
+        if (municipioSeleccionado) {
+            const mIndex = arbol.findIndex(m => m.municipio === selectedMunicipio);
+            html += renderMunicipio(municipioSeleccionado, mIndex);
+        }
+    }
 
     html += '</div>';
     container.innerHTML = html;
+}
+
+function renderMunicipioCompacto(municipio, mIndex) {
+    const nodeId = `municipio-${mIndex}`;
+    const totalVacunadores = municipio.vacunadores.length;
+    const totalMascotas = municipio.total_mascotas;
+
+    return `
+        <div class="tree-node municipio municipio-compact">
+            <div class="tree-header" onclick="toggleNode('${nodeId}')" style="cursor: pointer;">
+                <div class="tree-header-content">
+                    <span class="tree-icon">🏛️</span>
+                    <div class="tree-info">
+                        <div class="tree-title">
+                            <strong>📍 ${municipio.municipio}</strong>
+                        </div>
+                        <div class="tree-details">
+                            <span class="detail-item">👨‍⚕️ ${totalVacunadores} vacunadores</span>
+                            <span class="detail-item">🐕 ${municipio.total_perros || 0} perros • 🐱 ${municipio.total_gatos || 0} gatos</span>
+                        </div>
+                    </div>
+                    <div class="tree-badge">
+                        <span class="badge-number">${totalMascotas.toLocaleString()}</span>
+                        <span class="badge-label">🐾 mascotas</span>
+                    </div>
+                    <span class="expand-icon">👁️</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function volverModoCompacto() {
+    compactMode = true;
+    selectedMunicipio = null;
+    renderTree(treeData);
 }
 
 function renderMunicipio(municipio, mIndex) {
@@ -1834,33 +2195,36 @@ function renderMunicipio(municipio, mIndex) {
 
     return `
         <div class="tree-node municipio">
-            <div class="tree-header" onclick="toggleNode('${nodeId}')">
-                <span class="tree-icon">🏛️</span>
-                <div class="tree-info">
-                    <div class="tree-title">
-                        <strong>📍 ${municipio.municipio}</strong>
+            <div class="tree-header">
+                <div class="tree-header-content" onclick="toggleNode('${nodeId}')">
+                    <span class="tree-icon">🏛️</span>
+                    <div class="tree-info">
+                        <div class="tree-title">
+                            <strong>📍 ${municipio.municipio}</strong>
+                        </div>
+                        <div class="tree-details">
+                            <span class="detail-item">👨‍⚕️ ${totalVacunadores} vacunadores activos</span>
+                            <span class="detail-item">📊 Promedio: ${promedioPorVacunador} mascotas/vacunador</span>
+                            <span class="detail-item">🐕 ${municipio.total_perros || 0} perros • 🐱 ${municipio.total_gatos || 0} gatos</span>
+                        </div>
                     </div>
-                    <div class="tree-details">
-                        <span class="detail-item">👨‍⚕️ ${totalVacunadores} vacunadores activos</span>
-                        <span class="detail-item">📊 Promedio: ${promedioPorVacunador} mascotas/vacunador</span>
+                    <div class="tree-badge">
+                        <span class="badge-number">${totalMascotas.toLocaleString()}</span>
+                        <span class="badge-label">🐾 mascotas</span>
                     </div>
+                    <span class="expand-icon" id="${nodeId}-icon">⬇️</span>
                 </div>
-                <div class="tree-badge">
-                    <span class="badge-number">${totalMascotas.toLocaleString()}</span>
-                    <span class="badge-label">🐾 mascotas</span>
-                </div>
-                <span class="expand-icon" id="${nodeId}-icon">⬇️</span>
             </div>
             <div class="tree-content" id="${nodeId}-content">
                 <div class="tree-children">
-                    ${municipio.vacunadores.map((v, vIndex) => renderVacunador(v, `${nodeId}-${vIndex}`)).join('')}
+                    ${municipio.vacunadores.map((v, vIndex) => renderVacunador(v, `${nodeId}-${vIndex}`, municipio.municipio)).join('')}
                 </div>
             </div>
         </div>
     `;
 }
 
-function renderVacunador(vacunador, parentId) {
+function renderVacunador(vacunador, parentId, municipio) {
     const nodeId = `vacunador-${parentId}`;
     const totalDias = vacunador.fechas.length;
     const totalMascotas = vacunador.total_mascotas;
@@ -1868,22 +2232,30 @@ function renderVacunador(vacunador, parentId) {
 
     return `
         <div class="tree-node vacunador">
-            <div class="tree-header" onclick="toggleNode('${nodeId}')">
-                <span class="tree-icon">👨‍⚕️</span>
-                <div class="tree-info">
-                    <div class="tree-title">
-                        <strong>🩺 Dr. ${vacunador.nombre}</strong>
+            <div class="tree-header">
+                <div class="tree-header-content" onclick="toggleNode('${nodeId}')">
+                    <span class="tree-icon">👨‍⚕️</span>
+                    <div class="tree-info">
+                        <div class="tree-title">
+                            <strong>🩺 Dr. ${vacunador.nombre}</strong>
+                        </div>
+                        <div class="tree-details">
+                            <span class="detail-item">📅 ${totalDias} días activos</span>
+                            <span class="detail-item">⚡ Promedio: ${promedioPorDia} mascotas/día</span>
+                            <span class="detail-item">🐕 ${vacunador.total_perros || 0} perros • 🐱 ${vacunador.total_gatos || 0} gatos</span>
+                        </div>
                     </div>
-                    <div class="tree-details">
-                        <span class="detail-item">📅 ${totalDias} días activos</span>
-                        <span class="detail-item">⚡ Promedio: ${promedioPorDia} mascotas/día</span>
+                    <div class="tree-badge">
+                        <span class="badge-number">${totalMascotas.toLocaleString()}</span>
+                        <span class="badge-label">💉 vacunaciones</span>
                     </div>
+                    <span class="expand-icon" id="${nodeId}-icon">⬇️</span>
                 </div>
-                <div class="tree-badge">
-                    <span class="badge-number">${totalMascotas.toLocaleString()}</span>
-                    <span class="badge-label">💉 vacunaciones</span>
+                <div class="tree-actions">
+                    <button class="add-btn" onclick="addResponsable(event, '${vacunador.id}', '${vacunador.nombre}', '${municipio}')" title="Agregar Responsable">
+                        <i class="fas fa-plus"></i>
+                    </button>
                 </div>
-                <span class="expand-icon" id="${nodeId}-icon">⬇️</span>
             </div>
             <div class="tree-content" id="${nodeId}-content">
                 <div class="tree-children">
@@ -1909,22 +2281,25 @@ function renderFecha(fecha, parentId) {
 
     return `
         <div class="tree-node fecha">
-            <div class="tree-header" onclick="toggleNode('${nodeId}')">
-                <span class="tree-icon">📅</span>
-                <div class="tree-info">
-                    <div class="tree-title">
-                        <strong>🗓️ ${fechaFormateada}</strong>
+            <div class="tree-header">
+                <div class="tree-header-content" onclick="toggleNode('${nodeId}')">
+                    <span class="tree-icon">📅</span>
+                    <div class="tree-info">
+                        <div class="tree-title">
+                            <strong>🗓️ ${fechaFormateada}</strong>
+                        </div>
+                        <div class="tree-details">
+                            <span class="detail-item">👥 ${totalResponsables} responsables visitados</span>
+                            <span class="detail-item">📈 Promedio: ${promedioPorResponsable} mascotas/responsable</span>
+                            <span class="detail-item">🐕 ${fecha.total_perros || 0} perros • 🐱 ${fecha.total_gatos || 0} gatos</span>
+                        </div>
                     </div>
-                    <div class="tree-details">
-                        <span class="detail-item">👥 ${totalResponsables} responsables visitados</span>
-                        <span class="detail-item">📈 Promedio: ${promedioPorResponsable} mascotas/responsable</span>
+                    <div class="tree-badge">
+                        <span class="badge-number">${totalMascotas.toLocaleString()}</span>
+                        <span class="badge-label">🐾 atendidas</span>
                     </div>
+                    <span class="expand-icon" id="${nodeId}-icon">⬇️</span>
                 </div>
-                <div class="tree-badge">
-                    <span class="badge-number">${totalMascotas.toLocaleString()}</span>
-                    <span class="badge-label">🐾 atendidas</span>
-                </div>
-                <span class="expand-icon" id="${nodeId}-icon">⬇️</span>
             </div>
             <div class="tree-content" id="${nodeId}-content">
                 <div class="tree-children">
@@ -1953,6 +2328,7 @@ function renderResponsable(responsable, parentId) {
                         <div class="tree-details">
                             <span class="detail-item">🏥 ${mascotasConAntecedente}/${totalMascotas} con antecedente</span>
                             <span class="detail-item">✂️ ${mascotasEsterilizadas}/${totalMascotas} esterilizadas</span>
+                            <span class="detail-item">🐕 ${responsable.total_perros || 0} perros • 🐱 ${responsable.total_gatos || 0} gatos</span>
                         </div>
                     </div>
                     <div class="tree-badge">
@@ -1964,6 +2340,9 @@ function renderResponsable(responsable, parentId) {
                 <div class="tree-actions">
                     <button class="edit-btn" onclick="editResponsable(event, '${responsable.id}', '${responsable.nombre}', '${responsable.telefono || ''}', '${responsable.finca_nombre_predio || ''}', '${responsable.zona_vacunacion || ''}')" title="Editar Responsable">
                         <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="add-btn" onclick="addMascota(event, '${responsable.id}', '${responsable.nombre}')" title="Agregar Mascota">
+                        <i class="fas fa-plus"></i>
                     </button>
                 </div>
             </div>
@@ -2004,21 +2383,109 @@ function renderMascota(mascota) {
 }
 
 function toggleNode(nodeId) {
+    // Obtener el tipo de nodo y el nivel
+    const nodeType = getNodeType(nodeId);
+    const nodeLevel = getNodeLevel(nodeId);
+
+    // Si estamos en modo compacto y es un municipio, cambiar a modo expandido
+    if (compactMode && nodeType === 'municipio') {
+        // Extraer el nombre del municipio del nodeId
+        const municipioIndex = nodeId.replace('municipio-', '');
+        if (treeData && treeData.arbol && treeData.arbol[municipioIndex]) {
+            selectedMunicipio = treeData.arbol[municipioIndex].municipio;
+            compactMode = false;
+            renderTree(treeData); // Re-renderizar en modo expandido
+            return;
+        }
+    }
+
+    // Para el modo expandido normal, continuar con la lógica original
     const content = document.getElementById(nodeId + '-content');
     const icon = document.getElementById(nodeId + '-icon');
+
+    if (!content || !icon) {
+        console.warn('Elementos no encontrados para nodeId:', nodeId);
+        return;
+    }
+
     const header = content.previousElementSibling;
 
     if (content.classList.contains('expanded')) {
+        // Cerrar este nodo
         content.classList.remove('expanded');
         icon.classList.remove('expanded');
-        header.classList.remove('expanded');
+        if (header) header.classList.remove('expanded');
         icon.innerHTML = '⬇️';
+
+        // Cerrar todos los nodos hijos
+        closeAllChildNodes(content);
     } else {
+        // Cerrar todos los nodos hermanos (del mismo nivel)
+        closeSiblingNodes(nodeId, nodeType, nodeLevel);
+
+        // Abrir este nodo
         content.classList.add('expanded');
         icon.classList.add('expanded');
-        header.classList.add('expanded');
+        if (header) header.classList.add('expanded');
         icon.innerHTML = '⬆️';
     }
+}
+
+function getNodeType(nodeId) {
+    if (nodeId.startsWith('municipio-')) return 'municipio';
+    if (nodeId.startsWith('vacunador-')) return 'vacunador';
+    if (nodeId.startsWith('fecha-')) return 'fecha';
+    if (nodeId.startsWith('responsable-')) return 'responsable';
+    return 'unknown';
+}
+
+function getNodeLevel(nodeId) {
+    const parts = nodeId.split('-');
+    return parts.length - 1; // Contar el número de guiones para determinar el nivel
+}
+
+function closeSiblingNodes(currentNodeId, nodeType, nodeLevel) {
+    // Buscar todos los nodos del mismo tipo y nivel
+    const selector = `.tree-node.${nodeType} .tree-content.expanded`;
+    const expandedSiblings = document.querySelectorAll(selector);
+
+    expandedSiblings.forEach(sibling => {
+        const siblingId = sibling.id.replace('-content', '');
+        if (siblingId !== currentNodeId && getNodeLevel(siblingId) === nodeLevel) {
+            const icon = document.getElementById(siblingId + '-icon');
+            const header = sibling.previousElementSibling;
+
+            sibling.classList.remove('expanded');
+            if (icon) {
+                icon.classList.remove('expanded');
+                icon.innerHTML = '⬇️';
+            }
+            if (header) {
+                header.classList.remove('expanded');
+            }
+
+            // Cerrar también todos los nodos hijos
+            closeAllChildNodes(sibling);
+        }
+    });
+}
+
+function closeAllChildNodes(parentContent) {
+    const childContents = parentContent.querySelectorAll('.tree-content.expanded');
+    childContents.forEach(child => {
+        const childId = child.id.replace('-content', '');
+        const icon = document.getElementById(childId + '-icon');
+        const header = child.previousElementSibling;
+
+        child.classList.remove('expanded');
+        if (icon) {
+            icon.classList.remove('expanded');
+            icon.innerHTML = '⬇️';
+        }
+        if (header) {
+            header.classList.remove('expanded');
+        }
+    });
 }
 
 function toggleAllNodes() {
@@ -2362,6 +2829,116 @@ function editMascota(event, id, nombre, tipo, raza, color, antecedente, esterili
     modal.show();
 }
 
+function addResponsable(event, vacunadorId, vacunadorNombre, municipio) {
+    event.stopPropagation();
+
+    // Limpiar el modal para nuevo responsable
+    document.getElementById('newResponsableVacunadorId').value = vacunadorId;
+    document.getElementById('newResponsableVacunadorNombre').textContent = vacunadorNombre;
+
+    // Guardar el municipio para deducir la planilla
+    document.getElementById('newResponsableForm').setAttribute('data-municipio', municipio);
+    document.getElementById('newResponsableForm').reset();
+
+    // Reset mascota counter and container
+    mascotaCounter = 1;
+    const container = document.getElementById('mascotasContainer');
+    container.innerHTML = `
+        <div class="mascota-item" data-index="0">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">🐾 Nombre de la Mascota *</label>
+                        <input type="text" class="form-control mascota-nombre" required>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="mb-3">
+                        <label class="form-label">🐕/🐱 Tipo *</label>
+                        <select class="form-control mascota-tipo" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="perro">🐕 Perro</option>
+                            <option value="gato">🐱 Gato</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="mb-3">
+                        <label class="form-label">🌈 Color *</label>
+                        <input type="text" class="form-control mascota-color" required>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label class="form-label">🏷️ Raza</label>
+                        <input type="text" class="form-control mascota-raza">
+                    </div>
+                </div>
+                <div class="col-md-1">
+                    <div class="mb-3">
+                        <label class="form-label">&nbsp;</label>
+                        <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeMascota(0)" style="display: none;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">📍 Latitud</label>
+                        <input type="number" step="any" class="form-control mascota-latitud" placeholder="4.7110">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">📍 Longitud</label>
+                        <input type="number" step="any" class="form-control mascota-longitud" placeholder="-74.0721">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">📷 Foto</label>
+                        <input type="file" class="form-control mascota-foto" accept="image/*">
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-check">
+                        <input class="form-check-input mascota-antecedente" type="checkbox">
+                        <label class="form-check-label">🏥 Antecedente vacunal</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check">
+                        <input class="form-check-input mascota-esterilizado" type="checkbox">
+                        <label class="form-check-label">✂️ Esterilizado</label>
+                    </div>
+                </div>
+            </div>
+            <hr>
+        </div>
+    `;
+
+    // Mostrar el modal
+    const modal = new bootstrap.Modal(document.getElementById('addResponsableModal'));
+    modal.show();
+}
+
+function addMascota(event, responsableId, responsableNombre) {
+    event.stopPropagation();
+
+    // Limpiar el modal para nueva mascota
+    document.getElementById('newMascotaResponsableId').value = responsableId;
+    document.getElementById('newMascotaResponsableNombre').textContent = responsableNombre;
+    document.getElementById('newMascotaForm').reset();
+
+    // Mostrar el modal
+    const modal = new bootstrap.Modal(document.getElementById('addMascotaModal'));
+    modal.show();
+}
+
 async function saveResponsable() {
     const id = document.getElementById('responsableId').value;
     const nombre = document.getElementById('responsableNombre').value;
@@ -2480,6 +3057,331 @@ function showSuccessMessage(message) {
             notification.remove();
         }
     }, 3000);
+}
+
+// Variables para el contador de mascotas en el formulario
+let mascotaCounter = 1;
+
+function addMascotaToForm() {
+    const container = document.getElementById('mascotasContainer');
+    const newMascotaDiv = document.createElement('div');
+    newMascotaDiv.className = 'mascota-item';
+    newMascotaDiv.setAttribute('data-index', mascotaCounter);
+
+    newMascotaDiv.innerHTML = `
+        <div class="row">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label">🐾 Nombre de la Mascota *</label>
+                    <input type="text" class="form-control mascota-nombre" required>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="mb-3">
+                    <label class="form-label">🐕/🐱 Tipo *</label>
+                    <select class="form-control mascota-tipo" required>
+                        <option value="">Seleccionar...</option>
+                        <option value="perro">🐕 Perro</option>
+                        <option value="gato">🐱 Gato</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="mb-3">
+                    <label class="form-label">🌈 Color *</label>
+                    <input type="text" class="form-control mascota-color" required>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="mb-3">
+                    <label class="form-label">🏷️ Raza</label>
+                    <input type="text" class="form-control mascota-raza">
+                </div>
+            </div>
+            <div class="col-md-1">
+                <div class="mb-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="removeMascota(${mascotaCounter})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label">📍 Latitud</label>
+                    <input type="number" step="any" class="form-control mascota-latitud" placeholder="4.7110">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label">📍 Longitud</label>
+                    <input type="number" step="any" class="form-control mascota-longitud" placeholder="-74.0721">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label">📷 Foto</label>
+                    <input type="file" class="form-control mascota-foto" accept="image/*">
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-check">
+                    <input class="form-check-input mascota-antecedente" type="checkbox">
+                    <label class="form-check-label">🏥 Antecedente vacunal</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check">
+                    <input class="form-check-input mascota-esterilizado" type="checkbox">
+                    <label class="form-check-label">✂️ Esterilizado</label>
+                </div>
+            </div>
+        </div>
+        <hr>
+    `;
+
+    container.appendChild(newMascotaDiv);
+    mascotaCounter++;
+
+    // Mostrar botones de eliminar si hay más de una mascota
+    updateRemoveButtons();
+}
+
+function removeMascota(index) {
+    const mascotaItem = document.querySelector(`[data-index="${index}"]`);
+    if (mascotaItem) {
+        mascotaItem.remove();
+        updateRemoveButtons();
+    }
+}
+
+function updateRemoveButtons() {
+    const mascotaItems = document.querySelectorAll('.mascota-item');
+    mascotaItems.forEach((item, index) => {
+        const removeButton = item.querySelector('.btn-outline-danger');
+        if (removeButton) {
+            removeButton.style.display = mascotaItems.length > 1 ? 'block' : 'none';
+        }
+    });
+}
+
+async function saveNewResponsable() {
+    // Validar campos obligatorios
+    const nombre = document.getElementById('newResponsableNombre').value.trim();
+    const municipio = document.getElementById('newResponsableForm').getAttribute('data-municipio');
+
+    if (!nombre) {
+        alert('❌ El nombre del responsable es obligatorio');
+        return;
+    }
+
+    if (!municipio) {
+        alert('❌ Error: No se pudo determinar el municipio');
+        return;
+    }
+
+    // Obtener una planilla del municipio
+    let planillaId;
+    try {
+        const response = await fetch(`/api/planillas/?municipio=${encodeURIComponent(municipio)}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Token ' + getAuthToken(),
+                'X-CSRFToken': getCsrfToken()
+            }
+        });
+
+        if (response.ok) {
+            const planillas = await response.json();
+            if (planillas.length === 0) {
+                alert('❌ No se encontraron planillas para el municipio ' + municipio);
+                return;
+            }
+            planillaId = planillas[0].id; // Usar la primera planilla del municipio
+        } else {
+            alert('❌ Error al obtener planillas del municipio');
+            return;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión al obtener planillas');
+        return;
+    }
+
+    // Recopilar datos del responsable
+    const responsableData = {
+        nombre: nombre,
+        telefono: document.getElementById('newResponsableTelefono').value.trim(),
+        finca_nombre_predio: document.getElementById('newResponsableFinca').value.trim(),
+        zona_vacunacion: document.getElementById('newResponsableZona').value.trim(),
+        lote_vacuna: document.getElementById('newResponsableLote').value.trim(),
+        planilla_id: planillaId
+    };
+
+    // Recopilar datos de las mascotas
+    const mascotaItems = document.querySelectorAll('.mascota-item');
+    const mascotas = [];
+
+    for (let item of mascotaItems) {
+        const nombre = item.querySelector('.mascota-nombre').value.trim();
+        const tipo = item.querySelector('.mascota-tipo').value;
+        const color = item.querySelector('.mascota-color').value.trim();
+
+        if (!nombre || !tipo || !color) {
+            alert('❌ Todos los campos obligatorios de las mascotas deben completarse (nombre, tipo, color)');
+            return;
+        }
+
+        mascotas.push({
+            nombre: nombre,
+            tipo: tipo,
+            color: color,
+            raza: item.querySelector('.mascota-raza').value.trim(),
+            antecedente_vacunal: item.querySelector('.mascota-antecedente').checked,
+            esterilizado: item.querySelector('.mascota-esterilizado').checked,
+            latitud: item.querySelector('.mascota-latitud').value || null,
+            longitud: item.querySelector('.mascota-longitud').value || null,
+            foto: item.querySelector('.mascota-foto').files[0] || null
+        });
+    }
+
+    if (mascotas.length === 0) {
+        alert('❌ Debe agregar al menos una mascota');
+        return;
+    }
+
+    // Enviar datos al servidor
+    try {
+        const formData = new FormData();
+
+        // Agregar datos del responsable
+        Object.keys(responsableData).forEach(key => {
+            if (responsableData[key] !== null && responsableData[key] !== undefined) {
+                formData.append(key, responsableData[key]);
+            }
+        });
+
+        // Procesar mascotas con fotos
+        mascotas.forEach((mascota, index) => {
+            // Agregar campos básicos de mascota
+            Object.keys(mascota).forEach(key => {
+                if (key !== 'foto' && mascota[key] !== null && mascota[key] !== undefined) {
+                    formData.append(`mascotas[${index}][${key}]`, mascota[key]);
+                }
+            });
+
+            // Agregar foto si existe
+            if (mascota.foto) {
+                formData.append(`mascotas[${index}][foto]`, mascota.foto);
+            }
+        });
+
+        const response = await fetch('/api/responsables/', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Token ' + getAuthToken(),
+                'X-CSRFToken': getCsrfToken()
+                // No incluir Content-Type para FormData
+            },
+            body: formData
+        });
+
+        if (response.ok) {
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addResponsableModal'));
+            modal.hide();
+
+            // Mostrar mensaje de éxito
+            showSuccessMessage(`✅ Responsable "${nombre}" creado con ${mascotas.length} mascota(s)`);
+
+            // Recargar el árbol
+            loadTreeData();
+        } else {
+            const error = await response.json();
+            alert('❌ Error al crear responsable: ' + (error.message || 'Error desconocido'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión al crear el responsable');
+    }
+}
+
+async function saveNewMascota() {
+    // Validar campos obligatorios
+    const nombre = document.getElementById('newMascotaNombre').value.trim();
+    const tipo = document.getElementById('newMascotaTipo').value;
+    const color = document.getElementById('newMascotaColor').value.trim();
+    const responsableId = document.getElementById('newMascotaResponsableId').value;
+
+    if (!nombre || !tipo || !color) {
+        alert('❌ Todos los campos obligatorios deben completarse (nombre, tipo, color)');
+        return;
+    }
+
+    // Recopilar datos de la mascota
+    const mascotaData = {
+        nombre: nombre,
+        tipo: tipo,
+        color: color,
+        raza: document.getElementById('newMascotaRaza').value.trim(),
+        antecedente_vacunal: document.getElementById('newMascotaAntecedente').checked,
+        esterilizado: document.getElementById('newMascotaEsterilizado').checked,
+        latitud: document.getElementById('newMascotaLatitud').value || null,
+        longitud: document.getElementById('newMascotaLongitud').value || null,
+        responsable_id: responsableId
+    };
+
+    // Obtener el archivo de foto si existe
+    const fotoFile = document.getElementById('newMascotaFoto').files[0];
+
+    // Enviar datos al servidor
+    try {
+        const formData = new FormData();
+
+        // Agregar campos de datos
+        Object.keys(mascotaData).forEach(key => {
+            if (mascotaData[key] !== null && mascotaData[key] !== undefined) {
+                formData.append(key, mascotaData[key]);
+            }
+        });
+
+        // Agregar foto si existe
+        if (fotoFile) {
+            formData.append('foto', fotoFile);
+        }
+
+        const response = await fetch(`/api/responsables/${responsableId}/mascotas/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Token ' + getAuthToken(),
+                'X-CSRFToken': getCsrfToken()
+                // No incluir Content-Type para FormData
+            },
+            body: formData
+        });
+
+        if (response.ok) {
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addMascotaModal'));
+            modal.hide();
+
+            // Mostrar mensaje de éxito
+            showSuccessMessage(`✅ Mascota "${nombre}" agregada exitosamente`);
+
+            // Recargar el árbol
+            loadTreeData();
+        } else {
+            const error = await response.json();
+            alert('❌ Error al crear mascota: ' + (error.message || 'Error desconocido'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión al crear la mascota');
+    }
 }
 </script>
 {% endblock %}
