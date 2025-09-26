@@ -46,4 +46,12 @@ urlpatterns = [
     # URLs para edición de responsables y mascotas
     path('responsables/<int:responsable_id>/', views.update_responsable, name='update_responsable'),
     path('mascotas/<int:mascota_id>/', views.update_mascota, name='update_mascota'),
+
+    # URLs para eliminación de responsables y mascotas
+    path('responsables/<int:responsable_id>/delete/', views.delete_responsable, name='delete_responsable'),
+    path('mascotas/<int:mascota_id>/delete/', views.delete_mascota, name='delete_mascota'),
+
+    # URLs para edición de fechas de creación
+    path('responsables/<int:responsable_id>/fecha/', views.update_fecha_creacion_responsable, name='update_fecha_creacion_responsable'),
+    path('mascotas/<int:mascota_id>/fecha/', views.update_fecha_creacion_mascota, name='update_fecha_creacion_mascota'),
 ]

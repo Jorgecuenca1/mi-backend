@@ -81,7 +81,7 @@ class ResponsableViewSet(APIView):
                 planilla = Planilla.objects.get(id=planilla_id)
         except Planilla.DoesNotExist:
             return Response({'error': 'Planilla no encontrada'}, status=status.HTTP_404_NOT_FOUND)
-        
+
         # Crear responsable
         responsable_data = {
             'nombre': request.data.get('nombre'),
@@ -92,7 +92,7 @@ class ResponsableViewSet(APIView):
             'lote_vacuna': request.data.get('lote_vacuna', 'Sin especificar'),
             'planilla': planilla.id
         }
-        
+
         responsable_serializer = ResponsableSerializer(data=responsable_data)
         if responsable_serializer.is_valid():
             # Asignar created_by si el usuario está autenticado
@@ -103,14 +103,16 @@ class ResponsableViewSet(APIView):
             else:
                 print("Usuario no autenticado - responsable sin created_by")
                 responsable = responsable_serializer.save()
-            
+
             # Crear mascotas si se proporcionan
             mascotas_data = request.data.get('mascotas', [])
             mascotas_creadas = []
-            
+            mascotas_validas = 0
+            errores_mascotas = []
+
             print(f"DEBUG: mascotas_data tipo: {type(mascotas_data)}")
             print(f"DEBUG: mascotas_data contenido (primeros 200 chars): {str(mascotas_data)[:200]}")
-            
+
             # Si mascotas_data es un string, parsearlo como JSON
             if isinstance(mascotas_data, str):
                 try:
@@ -119,33 +121,53 @@ class ResponsableViewSet(APIView):
                 except json.JSONDecodeError:
                     print(f"Error parseando JSON de mascotas: {mascotas_data}")
                     mascotas_data = []
-            
+
             # Procesar cada mascota
             for i, mascota_data in enumerate(mascotas_data):
                 print(f"Procesando mascota {i+1}: tipo {type(mascota_data)}")
-                
+
                 # Verificar si mascota_data es un diccionario
                 if isinstance(mascota_data, dict):
                     # Hacer una copia del diccionario para evitar el error
                     mascota_data_copy = mascota_data.copy()
                     mascota_data_copy['responsable'] = responsable.id
-                    
+
+                    # Validar que tenga nombre y color (campos obligatorios solo si no están vacíos)
+                    nombre = mascota_data_copy.get('nombre', '').strip()
+                    color = mascota_data_copy.get('color', '').strip()
+
+                    # Si tanto nombre como color están vacíos, saltamos esta mascota (no es un error)
+                    if not nombre and not color:
+                        print(f"Mascota {i+1} saltada: campos vacíos, probablemente slot no usado")
+                        continue
+
+                    # Si tiene nombre pero no color, o viceversa, entonces sí es error
+                    if not nombre:
+                        print(f"Mascota {i+1} saltada: sin nombre válido pero tiene otros datos")
+                        errores_mascotas.append(f"Mascota {i+1}: el nombre es obligatorio cuando se llena el formulario")
+                        continue
+
+                    if not color:
+                        print(f"Mascota {i+1} saltada: sin color válido pero tiene otros datos")
+                        errores_mascotas.append(f"Mascota {i+1}: el color es obligatorio cuando se llena el formulario")
+                        continue
+
                     # DEBUG: Verificar foto
                     foto_base64 = mascota_data_copy.get('foto')
                     foto_index = mascota_data_copy.get('foto_index')
                     print(f"Foto encontrada: {type(foto_base64)}, longitud: {len(str(foto_base64)) if foto_base64 else 0}")
                     print(f"Foto_index encontrado: {foto_index}")
-                    
+
                     # Procesar foto si existe
                     if foto_base64 and isinstance(foto_base64, str) and len(foto_base64) > 100:
                         try:
                             print("Procesando foto base64...")
-                            
+
                             # Remover el prefijo data:image si existe
                             if foto_base64.startswith('data:image'):
                                 foto_base64 = foto_base64.split(',')[1]
                                 print("Prefijo data:image removido")
-                            
+
                             # Decodificar base64
                             foto_data = base64.b64decode(foto_base64)
                             foto_file = ContentFile(foto_data, name=f'mascota_{mascota_data_copy.get("nombre", "sin_nombre")}.png')
@@ -159,7 +181,7 @@ class ResponsableViewSet(APIView):
                         # Limpiar campos de foto para evitar errores
                         mascota_data_copy.pop('foto', None)
                         mascota_data_copy.pop('foto_index', None)
-                    
+
                     print(f"Datos de mascota antes del serializer: {mascota_data_copy}")
                     mascota_serializer = MascotaSerializer(data=mascota_data_copy)
                     if mascota_serializer.is_valid():
@@ -173,15 +195,29 @@ class ResponsableViewSet(APIView):
                         serialized_data = mascota_serializer.data
                         print(f"Datos serializados de mascota: {serialized_data}")
                         mascotas_creadas.append(serialized_data)
+                        mascotas_validas += 1
                         print(f"Mascota {mascota.nombre} creada exitosamente")
                     else:
                         print(f"Error en mascota serializer: {mascota_serializer.errors}")
+                        errores_mascotas.append(f"Mascota {i+1}: {mascota_serializer.errors}")
                 else:
                     print(f"mascota_data no es un diccionario: {type(mascota_data)}, valor: {mascota_data}")
-            
+                    errores_mascotas.append(f"Mascota {i+1}: formato de datos inválido")
+
+            # Verificar que se haya creado al menos una mascota válida
+            if mascotas_validas == 0 and len(mascotas_data) > 0:
+                # Si se enviaron mascotas pero ninguna es válida, eliminar el responsable
+                responsable.delete()
+                return Response({
+                    'error': 'Se requiere al menos una mascota válida con nombre y color obligatorios',
+                    'errores_mascotas': errores_mascotas
+                }, status=status.HTTP_400_BAD_REQUEST)
+
             response_data = responsable_serializer.data
             response_data['mascotas'] = mascotas_creadas
-            
+            response_data['mascotas_creadas'] = mascotas_validas
+            response_data['errores_mascotas'] = errores_mascotas
+
             return Response(response_data, status=status.HTTP_201_CREATED)
         else:
             return Response(responsable_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -1392,8 +1428,8 @@ def arbol_reportes(request):
                         'id': mascotas_list[0]['responsable']['id'] if mascotas_list else None,
                         'nombre': responsable_nombre,
                         'telefono': mascotas_list[0]['responsable']['telefono'] if mascotas_list else '',
-                        'finca_nombre_predio': mascotas_list[0]['responsable']['finca'] if mascotas_list else '',
-                        'zona_vacunacion': mascotas_list[0]['responsable']['zona'] if mascotas_list else '',
+                        'finca': mascotas_list[0]['responsable']['finca'] if mascotas_list else '',
+                        'zona': mascotas_list[0]['responsable']['zona'] if mascotas_list else '',
                         'total_mascotas': responsable_mascotas,
                         'total_perros': responsable_perros,
                         'total_gatos': responsable_gatos,
@@ -1590,8 +1626,10 @@ def update_responsable(request, responsable_id):
         # Actualizar campos
         responsable.nombre = request.data.get('nombre', responsable.nombre)
         responsable.telefono = request.data.get('telefono', responsable.telefono)
-        responsable.finca_nombre_predio = request.data.get('finca_nombre_predio', responsable.finca_nombre_predio)
-        responsable.zona_vacunacion = request.data.get('zona_vacunacion', responsable.zona_vacunacion)
+        responsable.finca = request.data.get('finca', responsable.finca)
+        responsable.zona = request.data.get('zona', responsable.zona)
+        responsable.nombre_zona = request.data.get('nombre_zona', responsable.nombre_zona)
+        responsable.lote_vacuna = request.data.get('lote_vacuna', responsable.lote_vacuna)
 
         responsable.save()
 
@@ -1601,8 +1639,254 @@ def update_responsable(request, responsable_id):
                 'id': responsable.id,
                 'nombre': responsable.nombre,
                 'telefono': responsable.telefono,
-                'finca_nombre_predio': responsable.finca_nombre_predio,
-                'zona_vacunacion': responsable.zona_vacunacion
+                'finca': responsable.finca,
+                'zona': responsable.zona,
+                'nombre_zona': responsable.nombre_zona,
+                'lote_vacuna': responsable.lote_vacuna
+            }
+        })
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_mascota(request, mascota_id):
+    """
+    Eliminar una mascota
+    """
+    try:
+        mascota = get_object_or_404(Mascota, id=mascota_id)
+
+        # Verificar permisos
+        print(f"DEBUG DELETE MASCOTA - Usuario: {request.user.username}, Tipo: {getattr(request.user, 'tipo_usuario', 'NO_TIENE_TIPO')}, Autenticado: {request.user.is_authenticated}")
+
+        if not request.user.is_authenticated:
+            return Response(
+                {'error': 'Usuario no autenticado'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        if not hasattr(request.user, 'tipo_usuario'):
+            return Response(
+                {'error': 'Usuario sin tipo definido'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if request.user.tipo_usuario not in ['administrador', 'tecnico']:
+            return Response(
+                {'error': f'No tiene permisos para eliminar mascotas. Su tipo de usuario es: {request.user.tipo_usuario}'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Guardar información antes de eliminar
+        mascota_info = {
+            'id': mascota.id,
+            'nombre': mascota.nombre,
+            'tipo': mascota.tipo,
+            'responsable': mascota.responsable.nombre if mascota.responsable else 'N/A'
+        }
+
+        mascota.delete()
+
+        return Response({
+            'message': f'Mascota "{mascota_info["nombre"]}" eliminada correctamente',
+            'mascota_eliminada': mascota_info
+        })
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_responsable(request, responsable_id):
+    """
+    Eliminar un responsable y todas sus mascotas
+    """
+    try:
+        responsable = get_object_or_404(Responsable, id=responsable_id)
+
+        # Verificar permisos
+        print(f"DEBUG DELETE RESPONSABLE - Usuario: {request.user.username}, Tipo: {getattr(request.user, 'tipo_usuario', 'NO_TIENE_TIPO')}, Autenticado: {request.user.is_authenticated}")
+
+        if not request.user.is_authenticated:
+            return Response(
+                {'error': 'Usuario no autenticado'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        if not hasattr(request.user, 'tipo_usuario'):
+            return Response(
+                {'error': 'Usuario sin tipo definido'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        if request.user.tipo_usuario not in ['administrador', 'tecnico']:
+            return Response(
+                {'error': f'No tiene permisos para eliminar responsables. Su tipo de usuario es: {request.user.tipo_usuario}'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Contar mascotas antes de eliminar
+        total_mascotas = responsable.mascotas.count()
+
+        # Guardar información antes de eliminar
+        responsable_info = {
+            'id': responsable.id,
+            'nombre': responsable.nombre,
+            'telefono': responsable.telefono,
+            'finca': responsable.finca,
+            'total_mascotas': total_mascotas
+        }
+
+        responsable.delete()  # Esto también eliminará las mascotas por CASCADE
+
+        return Response({
+            'message': f'Responsable "{responsable_info["nombre"]}" y {total_mascotas} mascota(s) eliminado(s) correctamente',
+            'responsable_eliminado': responsable_info
+        })
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_fecha_creacion_mascota(request, mascota_id):
+    """
+    Actualizar fecha de creación de una mascota
+    """
+    try:
+        mascota = get_object_or_404(Mascota, id=mascota_id)
+
+        # Verificar permisos
+        if request.user.tipo_usuario not in ['administrador', 'tecnico']:
+            return Response(
+                {'error': 'No tiene permisos para editar fechas de mascotas'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Obtener nueva fecha
+        nueva_fecha = request.data.get('fecha_creacion')
+        if not nueva_fecha:
+            return Response(
+                {'error': 'Se requiere el campo fecha_creacion'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from django.utils import timezone
+        from datetime import datetime
+
+        # Convertir string a datetime
+        try:
+            # Intentar varios formatos
+            try:
+                fecha_obj = datetime.strptime(nueva_fecha, '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                try:
+                    fecha_obj = datetime.strptime(nueva_fecha, '%Y-%m-%d')
+                except ValueError:
+                    fecha_obj = datetime.strptime(nueva_fecha, '%d/%m/%Y')
+
+            # Hacer timezone aware
+            fecha_obj = timezone.make_aware(fecha_obj)
+
+        except ValueError:
+            return Response(
+                {'error': 'Formato de fecha inválido. Use YYYY-MM-DD o YYYY-MM-DD HH:MM:SS'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Actualizar fecha
+        mascota.creado = fecha_obj
+        mascota.save()
+
+        return Response({
+            'message': 'Fecha de creación actualizada correctamente',
+            'mascota': {
+                'id': mascota.id,
+                'nombre': mascota.nombre,
+                'fecha_creacion_anterior': request.data.get('fecha_anterior', 'N/A'),
+                'fecha_creacion_nueva': mascota.creado.isoformat()
+            }
+        })
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_fecha_creacion_responsable(request, responsable_id):
+    """
+    Actualizar fecha de creación de un responsable
+    """
+    try:
+        responsable = get_object_or_404(Responsable, id=responsable_id)
+
+        # Verificar permisos
+        if request.user.tipo_usuario not in ['administrador', 'tecnico']:
+            return Response(
+                {'error': 'No tiene permisos para editar fechas de responsables'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Obtener nueva fecha
+        nueva_fecha = request.data.get('fecha_creacion')
+        if not nueva_fecha:
+            return Response(
+                {'error': 'Se requiere el campo fecha_creacion'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from django.utils import timezone
+        from datetime import datetime
+
+        # Convertir string a datetime
+        try:
+            # Intentar varios formatos
+            try:
+                fecha_obj = datetime.strptime(nueva_fecha, '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                try:
+                    fecha_obj = datetime.strptime(nueva_fecha, '%Y-%m-%d')
+                except ValueError:
+                    fecha_obj = datetime.strptime(nueva_fecha, '%d/%m/%Y')
+
+            # Hacer timezone aware
+            fecha_obj = timezone.make_aware(fecha_obj)
+
+        except ValueError:
+            return Response(
+                {'error': 'Formato de fecha inválido. Use YYYY-MM-DD o YYYY-MM-DD HH:MM:SS'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Actualizar fecha
+        responsable.creado = fecha_obj
+        responsable.save()
+
+        return Response({
+            'message': 'Fecha de creación actualizada correctamente',
+            'responsable': {
+                'id': responsable.id,
+                'nombre': responsable.nombre,
+                'fecha_creacion_anterior': request.data.get('fecha_anterior', 'N/A'),
+                'fecha_creacion_nueva': responsable.creado.isoformat()
             }
         })
 
@@ -1656,4 +1940,5 @@ def update_mascota(request, mascota_id):
         return Response(
             {'error': str(e)},
             status=status.HTTP_400_BAD_REQUEST
-        ) 
+        )
+

@@ -380,6 +380,42 @@
         font-size: 1em;
     }
 
+    .delete-btn {
+        background: linear-gradient(135deg,
+            rgba(239, 68, 68, 0.9) 0%,
+            rgba(220, 38, 38, 0.9) 100%);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+        margin-left: 8px;
+    }
+
+    .delete-btn:hover {
+        transform: translateY(-2px) scale(1.1);
+        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+        background: linear-gradient(135deg,
+            rgba(220, 38, 38, 1) 0%,
+            rgba(185, 28, 28, 1) 100%);
+    }
+
+    .delete-btn-small {
+        width: 32px;
+        height: 32px;
+        font-size: 0.8em;
+    }
+
+    .delete-btn i {
+        font-size: 1em;
+    }
+
     .municipio-compact {
         margin-bottom: 15px;
         transition: all 0.3s ease;
@@ -1442,6 +1478,7 @@
 {% endblock %}
 
 {% block content %}
+{% csrf_token %}
 <div class="container-fluid tree-container">
     <div class="stats-header">
         <div class="header-content">
@@ -1695,7 +1732,26 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="responsableZona" class="form-label">📍 Zona de Vacunación</label>
-                                    <input type="text" class="form-control" id="responsableZona">
+                                    <select class="form-control" id="responsableZona">
+                                        <option value="barrio">Barrio</option>
+                                        <option value="vereda">Vereda</option>
+                                        <option value="centro poblado">Centro Poblado</option>
+                                        <option value="Sin especificar">Sin especificar</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="responsableNombreZona" class="form-label">🏘️ Nombre de la Zona</label>
+                                    <input type="text" class="form-control" id="responsableNombreZona" placeholder="Ej: Barrio Centro, Vereda La Paz">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="responsableLote" class="form-label">💉 Lote de Vacuna</label>
+                                    <input type="text" class="form-control" id="responsableLote" placeholder="Ej: VET2024-001">
                                 </div>
                             </div>
                         </div>
@@ -1730,7 +1786,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="mascotaTipo" class="form-label">🦮 Tipo</label>
-                                    <select class="form-control" id="mascotaTipo" required>
+                                    <select class="form-control" id="mascotaTipo" required onchange="updateRazaOptions('mascotaRaza')">
                                         <option value="perro">🐕 Perro</option>
                                         <option value="gato">🐱 Gato</option>
                                     </select>
@@ -1741,7 +1797,11 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="mascotaRaza" class="form-label">🏷️ Raza</label>
-                                    <input type="text" class="form-control" id="mascotaRaza">
+                                    <select class="form-control" id="mascotaRaza" required>
+                                        <option value="M">M</option>
+                                        <option value="H">H</option>
+                                        <option value="PME">PME</option>
+                                    </select>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -1951,7 +2011,7 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="newMascotaTipo" class="form-label">🐕/🐱 Tipo *</label>
-                                    <select class="form-control" id="newMascotaTipo" required>
+                                    <select class="form-control" id="newMascotaTipo" required onchange="updateRazaOptions('newMascotaRaza')">
                                         <option value="">Seleccionar...</option>
                                         <option value="perro">🐕 Perro</option>
                                         <option value="gato">🐱 Gato</option>
@@ -1969,7 +2029,9 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="newMascotaRaza" class="form-label">🏷️ Raza</label>
-                                    <input type="text" class="form-control" id="newMascotaRaza">
+                                    <select class="form-control" id="newMascotaRaza" required>
+                                        <option value="">Seleccionar tipo primero...</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -2363,11 +2425,14 @@ function renderResponsable(responsable, parentId) {
                     <span class="expand-icon" id="${nodeId}-icon">⬇️</span>
                 </div>
                 <div class="tree-actions">
-                    <button class="edit-btn" onclick="editResponsable(event, '${responsable.id}', '${responsable.nombre}', '${responsable.telefono || ''}', '${responsable.finca_nombre_predio || ''}', '${responsable.zona_vacunacion || ''}')" title="Editar Responsable">
+                    <button class="edit-btn" onclick="editResponsable(event, '${responsable.id}', '${responsable.nombre}', '${responsable.telefono || ''}', '${responsable.finca || ''}', '${responsable.zona || ''}', '${responsable.nombre_zona || ''}', '${responsable.lote_vacuna || ''}')" title="Editar Responsable">
                         <i class="fas fa-edit"></i>
                     </button>
                     <button class="add-btn" onclick="addMascota(event, '${responsable.id}', '${responsable.nombre}')" title="Agregar Mascota">
                         <i class="fas fa-plus"></i>
+                    </button>
+                    <button class="delete-btn" onclick="deleteResponsable(event, '${responsable.id}', '${responsable.nombre}')" title="Eliminar Responsable">
+                        <i class="fas fa-trash"></i>
                     </button>
                 </div>
             </div>
@@ -2401,6 +2466,9 @@ function renderMascota(mascota) {
             <div class="mascota-actions">
                 <button class="edit-btn edit-btn-small" onclick="editMascota(event, '${mascota.id}', '${mascota.nombre}', '${mascota.tipo}', '${mascota.raza}', '${mascota.color}', ${mascota.antecedente_vacunal}, ${mascota.esterilizado})" title="Editar Mascota">
                     <i class="fas fa-edit"></i>
+                </button>
+                <button class="delete-btn delete-btn-small" onclick="deleteMascota(event, '${mascota.id}', '${mascota.nombre}')" title="Eliminar Mascota">
+                    <i class="fas fa-trash"></i>
                 </button>
             </div>
         </div>
@@ -2552,6 +2620,34 @@ function getAuthToken() {
 
 function getCsrfToken() {
     return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+
+// Función para actualizar opciones de raza según el tipo de mascota
+function updateRazaOptions(razaSelectId) {
+    const tipoSelect = razaSelectId === 'mascotaRaza' ?
+        document.getElementById('mascotaTipo') :
+        document.getElementById('newMascotaTipo');
+    const razaSelect = document.getElementById(razaSelectId);
+
+    const tipo = tipoSelect.value;
+
+    // Limpiar opciones actuales
+    razaSelect.innerHTML = '';
+
+    if (tipo === 'perro') {
+        razaSelect.innerHTML = `
+            <option value="H">H</option>
+            <option value="M">M</option>
+            <option value="PME">PME</option>
+        `;
+    } else if (tipo === 'gato') {
+        razaSelect.innerHTML = `
+            <option value="H">H</option>
+            <option value="M">M</option>
+        `;
+    } else {
+        razaSelect.innerHTML = '<option value="">Seleccionar tipo primero...</option>';
+    }
 }
 
 // Funciones para manejar filtros
@@ -2822,7 +2918,7 @@ function exportarResultados() {
 }
 
 // Funciones de edición
-function editResponsable(event, id, nombre, telefono, finca, zona) {
+function editResponsable(event, id, nombre, telefono, finca, zona, nombre_zona, lote_vacuna) {
     event.stopPropagation();
 
     // Llenar el modal con los datos actuales
@@ -2831,6 +2927,8 @@ function editResponsable(event, id, nombre, telefono, finca, zona) {
     document.getElementById('responsableTelefono').value = telefono;
     document.getElementById('responsableFinca').value = finca;
     document.getElementById('responsableZona').value = zona;
+    document.getElementById('responsableNombreZona').value = nombre_zona || '';
+    document.getElementById('responsableLote').value = lote_vacuna || '';
 
     // Mostrar el modal
     const modal = new bootstrap.Modal(document.getElementById('editResponsableModal'));
@@ -2844,10 +2942,13 @@ function editMascota(event, id, nombre, tipo, raza, color, antecedente, esterili
     document.getElementById('mascotaId').value = id;
     document.getElementById('mascotaNombre').value = nombre;
     document.getElementById('mascotaTipo').value = tipo;
-    document.getElementById('mascotaRaza').value = raza;
     document.getElementById('mascotaColor').value = color;
     document.getElementById('mascotaAntecedente').checked = antecedente;
     document.getElementById('mascotaEsterilizado').checked = esterilizado;
+
+    // Actualizar opciones de raza según el tipo y seleccionar la raza actual
+    updateRazaOptions('mascotaRaza');
+    document.getElementById('mascotaRaza').value = raza;
 
     // Mostrar el modal
     const modal = new bootstrap.Modal(document.getElementById('editMascotaModal'));
@@ -2959,6 +3060,9 @@ function addMascota(event, responsableId, responsableNombre) {
     document.getElementById('newMascotaResponsableNombre').textContent = responsableNombre;
     document.getElementById('newMascotaForm').reset();
 
+    // Resetear opciones de raza
+    document.getElementById('newMascotaRaza').innerHTML = '<option value="">Seleccionar tipo primero...</option>';
+
     // Mostrar el modal
     const modal = new bootstrap.Modal(document.getElementById('addMascotaModal'));
     modal.show();
@@ -2970,6 +3074,8 @@ async function saveResponsable() {
     const telefono = document.getElementById('responsableTelefono').value;
     const finca = document.getElementById('responsableFinca').value;
     const zona = document.getElementById('responsableZona').value;
+    const nombre_zona = document.getElementById('responsableNombreZona').value;
+    const lote_vacuna = document.getElementById('responsableLote').value;
 
     if (!nombre.trim()) {
         alert('❌ El nombre es obligatorio');
@@ -2987,8 +3093,10 @@ async function saveResponsable() {
             body: JSON.stringify({
                 nombre: nombre,
                 telefono: telefono,
-                finca_nombre_predio: finca,
-                zona_vacunacion: zona
+                finca: finca,
+                zona: zona,
+                nombre_zona: nombre_zona,
+                lote_vacuna: lote_vacuna
             })
         });
 
@@ -3238,12 +3346,28 @@ async function saveNewResponsable() {
     }
 
     // Recopilar datos del responsable
+    const telefonoEl = document.getElementById('newResponsableTelefono');
+    const fincaEl = document.getElementById('newResponsableFinca');
+    const zonaEl = document.getElementById('newResponsableZona');
+    const loteEl = document.getElementById('newResponsableLote');
+
+    if (!telefonoEl || !fincaEl || !zonaEl || !loteEl) {
+        alert('❌ Error: No se encontraron todos los campos del formulario');
+        console.error('Elementos faltantes:', {
+            telefono: !!telefonoEl,
+            finca: !!fincaEl,
+            zona: !!zonaEl,
+            lote: !!loteEl
+        });
+        return;
+    }
+
     const responsableData = {
         nombre: nombre,
-        telefono: document.getElementById('newResponsableTelefono').value.trim(),
-        finca_nombre_predio: document.getElementById('newResponsableFinca').value.trim(),
-        zona_vacunacion: document.getElementById('newResponsableZona').value.trim(),
-        lote_vacuna: document.getElementById('newResponsableLote').value.trim(),
+        telefono: telefonoEl.value.trim(),
+        finca: fincaEl.value.trim(),
+        zona: zonaEl.value.trim(),
+        lote_vacuna: loteEl.value.trim(),
         planilla_id: planillaId
     };
 
@@ -3406,6 +3530,71 @@ async function saveNewMascota() {
     } catch (error) {
         console.error('Error:', error);
         alert('❌ Error de conexión al crear la mascota');
+    }
+}
+
+// Funciones de eliminación
+async function deleteMascota(event, id, nombre) {
+    event.stopPropagation();
+
+    if (!confirm(`⚠️ ¿Estás seguro de que quieres eliminar la mascota "${nombre}"?\n\nEsta acción no se puede deshacer.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/mascotas/${id}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'  // Usar autenticación de sesión
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showSuccessMessage(`✅ ${result.message}`);
+            // Recargar el árbol
+            loadTreeData();
+        } else {
+            const error = await response.json();
+            alert('❌ Error al eliminar mascota: ' + (error.error || 'Error desconocido'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión al eliminar la mascota');
+    }
+}
+
+async function deleteResponsable(event, id, nombre) {
+    event.stopPropagation();
+
+    if (!confirm(`⚠️ ¿Estás seguro de que quieres eliminar al responsable "${nombre}"?\n\nEsta acción también eliminará TODAS sus mascotas asociadas.\n\nEsta acción no se puede deshacer.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/responsables/${id}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'  // Usar autenticación de sesión
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            showSuccessMessage(`✅ ${result.message}`);
+            // Recargar el árbol
+            loadTreeData();
+        } else {
+            const error = await response.json();
+            alert('❌ Error al eliminar responsable: ' + (error.error || 'Error desconocido'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión al eliminar el responsable');
     }
 }
 </script>
