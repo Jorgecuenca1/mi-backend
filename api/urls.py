@@ -37,6 +37,12 @@ urlpatterns = [
     # URL para reporte PDF de vacunadores
     path('reporte/vacunador/pdf/', views.reporte_vacunador_pdf, name='reporte_vacunador_pdf'),
 
+    # URL para imprimir planilla por municipio (técnicos y vacunadores)
+    path('planilla/imprimir/', views.imprimir_planilla_municipio_pdf, name='imprimir_planilla_municipio'),
+
+    # URL para reporte estadístico de vacunación (técnicos y vacunadores)
+    path('reporte/estadistico/', views.reporte_estadistico_vacunacion_pdf, name='reporte_estadistico_vacunacion'),
+
     # URLs para el árbol de reportes (solo administradores)
     path('reportes/arbol/', views.arbol_reportes, name='arbol_reportes'),
     path('reportes/estadisticas/', views.estadisticas_generales, name='estadisticas_generales'),

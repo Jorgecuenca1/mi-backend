@@ -234,7 +234,7 @@
                 font-weight: 600;
                 transition: transform 0.3s, box-shadow 0.3s;
                 box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.4)';" 
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.4)';"
                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(102, 126, 234, 0.3)';">
                 🗺️ Ver Mapa de Mascotas
             </a>
@@ -250,10 +250,48 @@
                 font-weight: 600;
                 transition: transform 0.3s, box-shadow 0.3s;
                 box-shadow: 0 4px 15px rgba(72, 201, 176, 0.3);
-            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(72, 201, 176, 0.4)';" 
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(72, 201, 176, 0.4)';"
                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(72, 201, 176, 0.3)';">
                 📊 Ver Reportes
             </a>
+
+            {% if user_type == 'Técnico' or user_type == 'Vacunador' %}
+            <button onclick="mostrarModalPlanilla()" style="
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: 10px;
+                border: none;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-weight: 600;
+                transition: transform 0.3s, box-shadow 0.3s;
+                box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(245, 87, 108, 0.4)';"
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(245, 87, 108, 0.3)';">
+                📄 Imprimir Planilla
+            </button>
+
+            <button onclick="mostrarModalEstadistico()" style="
+                background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: 10px;
+                border: none;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-weight: 600;
+                transition: transform 0.3s, box-shadow 0.3s;
+                box-shadow: 0 4px 15px rgba(250, 112, 154, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(250, 112, 154, 0.4)';"
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(250, 112, 154, 0.3)';">
+                📊 Reporte Estadístico
+            </button>
+            {% endif %}
         </div>
 
         <div class="stats-grid">
@@ -755,6 +793,249 @@
         }
     </style>
 
+    <!-- Modal para Reporte Estadístico -->
+    <div id="modalEstadistico" style="
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.6);
+    ">
+        <div style="
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        ">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="color: #2d3748; margin: 0;">📊 Reporte Estadístico de Vacunación</h2>
+                <button onclick="cerrarModalEstadistico()" style="
+                    background: none;
+                    border: none;
+                    font-size: 2rem;
+                    cursor: pointer;
+                    color: #999;
+                    transition: color 0.3s;
+                " onmouseover="this.style.color='#333'" onmouseout="this.style.color='#999'">
+                    &times;
+                </button>
+            </div>
+
+            <p style="color: #4a5568; margin-bottom: 1.5rem;">
+                Genera un reporte con estadísticas de vacunación por día y vacunador:
+                <br><br>
+                <strong>Incluye:</strong> Perros/Gatos totales, división Rural/Urbano, y totales generales.
+            </p>
+
+            <form id="formEstadistico">
+                <!-- Selector de Municipio -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-weight: bold; color: #2d3748; margin-bottom: 0.5rem;">
+                        Municipio:
+                    </label>
+                    <select id="municipio-estadistico" style="
+                        width: 100%;
+                        padding: 0.75rem;
+                        border: 2px solid #e2e8f0;
+                        border-radius: 8px;
+                        font-size: 1rem;
+                        color: #2d3748;
+                        background-color: white;
+                    " required>
+                        {% if user_type == 'Administrador' %}
+                        <option value="">Todos los municipios</option>
+                        {% endif %}
+                        {% for municipio in municipios_unicos %}
+                        <option value="{{ municipio }}">{{ municipio }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if user_type != 'Administrador' %}
+                    <small style="color: #718096; display: block; margin-top: 0.5rem;">
+                        {% if user_type == 'Técnico' %}
+                        El reporte incluirá todos los vacunadores del municipio seleccionado
+                        {% else %}
+                        El reporte solo incluirá tus vacunaciones
+                        {% endif %}
+                    </small>
+                    {% endif %}
+                </div>
+
+                <!-- Botones -->
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                    <button type="button" onclick="cerrarModalEstadistico()" style="
+                        background: #e2e8f0;
+                        color: #2d3748;
+                        padding: 0.75rem 1.5rem;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        transition: background 0.3s;
+                    " onmouseover="this.style.background='#cbd5e0'" onmouseout="this.style.background='#e2e8f0'">
+                        Cancelar
+                    </button>
+                    <button type="button" onclick="generarEstadisticoPDF()" style="
+                        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+                        color: white;
+                        padding: 0.75rem 1.5rem;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        transition: transform 0.3s, box-shadow 0.3s;
+                        box-shadow: 0 4px 15px rgba(250, 112, 154, 0.3);
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(250, 112, 154, 0.4)'"
+                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(250, 112, 154, 0.3)'">
+                        📊 Generar Reporte
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Imprimir Planilla -->
+    <div id="modalPlanilla" style="
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.6);
+    ">
+        <div style="
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        ">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="color: #2d3748; margin: 0;">📄 Imprimir Planilla por Municipio</h2>
+                <button onclick="cerrarModalPlanilla()" style="
+                    background: none;
+                    border: none;
+                    font-size: 2rem;
+                    cursor: pointer;
+                    color: #999;
+                    transition: color 0.3s;
+                " onmouseover="this.style.color='#333'" onmouseout="this.style.color='#999'">
+                    &times;
+                </button>
+            </div>
+
+            <p style="color: #4a5568; margin-bottom: 1.5rem;">
+                Selecciona los criterios para generar el PDF de la planilla:
+            </p>
+
+            <form id="formPlanilla">
+                <!-- Selector de Municipio -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-weight: bold; color: #2d3748; margin-bottom: 0.5rem;">
+                        Municipio:
+                    </label>
+                    <select id="municipio-planilla" style="
+                        width: 100%;
+                        padding: 0.75rem;
+                        border: 2px solid #e2e8f0;
+                        border-radius: 8px;
+                        font-size: 1rem;
+                        color: #2d3748;
+                        background-color: white;
+                    " required>
+                        {% if user_type == 'Administrador' %}
+                        <option value="">Todos los municipios</option>
+                        {% endif %}
+                        {% for municipio in municipios_unicos %}
+                        <option value="{{ municipio }}">{{ municipio }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if user_type != 'Administrador' %}
+                    <small style="color: #718096; display: block; margin-top: 0.5rem;">
+                        Solo puedes ver tus municipios asignados
+                    </small>
+                    {% endif %}
+                </div>
+
+                <!-- Selector de Fecha -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-weight: bold; color: #2d3748; margin-bottom: 0.5rem;">
+                        Fecha:
+                    </label>
+                    <select id="tipo-fecha-planilla" style="
+                        width: 100%;
+                        padding: 0.75rem;
+                        border: 2px solid #e2e8f0;
+                        border-radius: 8px;
+                        font-size: 1rem;
+                        color: #2d3748;
+                        background-color: white;
+                        margin-bottom: 0.5rem;
+                    " onchange="toggleFechaEspecifica()">
+                        <option value="todos">Todos los días (separados por fecha)</option>
+                        <option value="especifica">Fecha específica</option>
+                    </select>
+
+                    <div id="fecha-especifica-container" style="display: none;">
+                        <input type="date" id="fecha-planilla" style="
+                            width: 100%;
+                            padding: 0.75rem;
+                            border: 2px solid #e2e8f0;
+                            border-radius: 8px;
+                            font-size: 1rem;
+                            color: #2d3748;
+                        ">
+                    </div>
+
+                    <small style="color: #718096; display: block; margin-top: 0.5rem;">
+                        <span id="fecha-info">Se generará un PDF con todas las vacunaciones, organizadas por día (máximo 20 mascotas por hoja)</span>
+                    </small>
+                </div>
+
+                <!-- Botones -->
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                    <button type="button" onclick="cerrarModalPlanilla()" style="
+                        background: #e2e8f0;
+                        color: #2d3748;
+                        padding: 0.75rem 1.5rem;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        transition: background 0.3s;
+                    " onmouseover="this.style.background='#cbd5e0'" onmouseout="this.style.background='#e2e8f0'">
+                        Cancelar
+                    </button>
+                    <button type="button" onclick="generarPlanillaPDF()" style="
+                        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                        color: white;
+                        padding: 0.75rem 1.5rem;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        transition: transform 0.3s, box-shadow 0.3s;
+                        box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(245, 87, 108, 0.4)'"
+                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(245, 87, 108, 0.3)'">
+                        📄 Generar PDF
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- JavaScript para funcionalidad de PDF -->
     <script>
         // Función para exportar PDF del día actual
@@ -783,6 +1064,122 @@
                 fechaInput.value = new Date().toISOString().split('T')[0];
             }
         });
+
+        // Funciones para el modal de planilla
+        function mostrarModalPlanilla() {
+            document.getElementById('modalPlanilla').style.display = 'block';
+            // Establecer fecha de hoy por defecto
+            const fechaPlanilla = document.getElementById('fecha-planilla');
+            if (fechaPlanilla && !fechaPlanilla.value) {
+                fechaPlanilla.value = new Date().toISOString().split('T')[0];
+            }
+        }
+
+        function cerrarModalPlanilla() {
+            document.getElementById('modalPlanilla').style.display = 'none';
+        }
+
+        function toggleFechaEspecifica() {
+            const tipoFecha = document.getElementById('tipo-fecha-planilla').value;
+            const fechaContainer = document.getElementById('fecha-especifica-container');
+            const fechaInfo = document.getElementById('fecha-info');
+
+            if (tipoFecha === 'especifica') {
+                fechaContainer.style.display = 'block';
+                fechaInfo.textContent = 'Se generará un PDF solo con las vacunaciones de la fecha seleccionada';
+                // Establecer fecha de hoy
+                const fechaPlanilla = document.getElementById('fecha-planilla');
+                if (!fechaPlanilla.value) {
+                    fechaPlanilla.value = new Date().toISOString().split('T')[0];
+                }
+            } else {
+                fechaContainer.style.display = 'none';
+                fechaInfo.textContent = 'Se generará un PDF con todas las vacunaciones, organizadas por día (máximo 20 mascotas por hoja)';
+            }
+        }
+
+        function generarPlanillaPDF() {
+            const municipio = document.getElementById('municipio-planilla').value;
+            const tipoFecha = document.getElementById('tipo-fecha-planilla').value;
+            const fechaPlanilla = document.getElementById('fecha-planilla').value;
+
+            // Validar que se haya seleccionado un municipio
+            if (!municipio) {
+                alert('Por favor selecciona un municipio');
+                return;
+            }
+
+            let url = '{% url "imprimir_planilla_municipio" %}';
+            const params = new URLSearchParams();
+
+            params.append('municipio', municipio);
+
+            // Solo agregar fecha si se seleccionó fecha específica
+            if (tipoFecha === 'especifica' && fechaPlanilla) {
+                params.append('fecha', fechaPlanilla);
+            }
+
+            url += '?' + params.toString();
+
+            window.open(url, '_blank');
+            cerrarModalPlanilla();
+        }
+
+        // Cerrar modal al hacer clic fuera de él
+        window.onclick = function(event) {
+            const modal = document.getElementById('modalPlanilla');
+            if (event.target === modal) {
+                cerrarModalPlanilla();
+            }
+        }
+
+        // Cerrar modal con la tecla ESC
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                cerrarModalPlanilla();
+                cerrarModalEstadistico();
+            }
+        });
+
+        // Funciones para el modal de reporte estadístico
+        function mostrarModalEstadistico() {
+            document.getElementById('modalEstadistico').style.display = 'block';
+        }
+
+        function cerrarModalEstadistico() {
+            document.getElementById('modalEstadistico').style.display = 'none';
+        }
+
+        function generarEstadisticoPDF() {
+            const municipio = document.getElementById('municipio-estadistico').value;
+
+            // Validar que se haya seleccionado un municipio
+            if (!municipio) {
+                alert('Por favor selecciona un municipio');
+                return;
+            }
+
+            let url = '{% url "reporte_estadistico_vacunacion" %}';
+            const params = new URLSearchParams();
+            params.append('municipio', municipio);
+            url += '?' + params.toString();
+
+            window.open(url, '_blank');
+            cerrarModalEstadistico();
+        }
+
+        // Cerrar modales al hacer clic fuera de ellos
+        window.onclick = function(event) {
+            const modalPlanilla = document.getElementById('modalPlanilla');
+            const modalEstadistico = document.getElementById('modalEstadistico');
+
+            if (event.target === modalPlanilla) {
+                cerrarModalPlanilla();
+            }
+            if (event.target === modalEstadistico) {
+                cerrarModalEstadistico();
+            }
+        }
     </script>
 </body>
 
