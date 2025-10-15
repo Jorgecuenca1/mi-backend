@@ -1960,12 +1960,12 @@ def reporte_estadistico_vacunacion_pdf(request):
     """
     Generar reporte estadístico de vacunación por día y vacunador
     Muestra: Día, Vacunador, Perros Total, Perros Rural, Perros Urbano, Gatos Total, Gatos Rural, Gatos Urbano
-    Disponible para técnicos (ven todos los vacunadores) y vacunadores (solo sus datos)
+    Disponible para técnicos, vacunadores y administradores
     """
     user = request.user
 
     # Verificar permisos
-    if user.tipo_usuario not in ['tecnico', 'vacunador']:
+    if user.tipo_usuario not in ['tecnico', 'vacunador', 'administrador']:
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('login')
 
@@ -1987,7 +1987,10 @@ def reporte_estadistico_vacunacion_pdf(request):
     municipio_filtro = request.GET.get('municipio')
 
     # Obtener planillas según el rol del usuario
-    if user.tipo_usuario == 'tecnico':
+    if user.tipo_usuario == 'administrador':
+        # Administradores ven todos los municipios
+        planillas = Planilla.objects.all()
+    elif user.tipo_usuario == 'tecnico':
         planillas = Planilla.objects.filter(
             Q(tecnico_asignado=user) |
             Q(tecnicos_adicionales=user)
@@ -2005,8 +2008,8 @@ def reporte_estadistico_vacunacion_pdf(request):
         planillas = planillas.filter(municipio__icontains=municipio_filtro)
 
     # Obtener mascotas del municipio
-    if user.tipo_usuario == 'tecnico':
-        # Técnicos ven todas las mascotas de sus municipios
+    if user.tipo_usuario in ['administrador', 'tecnico']:
+        # Administradores y técnicos ven todas las mascotas de sus municipios
         mascotas = Mascota.objects.filter(
             responsable__planilla__in=planillas
         ).select_related('responsable', 'responsable__planilla', 'created_by')
@@ -2245,12 +2248,12 @@ def reporte_estadistico_vacunacion_pdf(request):
 def imprimir_planilla_municipio_pdf(request):
     """
     Generar PDF de planillas por municipio con máximo 20 mascotas por hoja
-    Disponible para técnicos y vacunadores
+    Disponible para técnicos, vacunadores y administradores
     """
     user = request.user
 
     # Verificar permisos
-    if user.tipo_usuario not in ['tecnico', 'vacunador']:
+    if user.tipo_usuario not in ['tecnico', 'vacunador', 'administrador']:
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('login')
 
@@ -2280,7 +2283,10 @@ def imprimir_planilla_municipio_pdf(request):
         fecha_reporte = None
 
     # Obtener planillas según el rol del usuario
-    if user.tipo_usuario == 'tecnico':
+    if user.tipo_usuario == 'administrador':
+        # Administradores ven todos los municipios
+        planillas = Planilla.objects.all()
+    elif user.tipo_usuario == 'tecnico':
         planillas = Planilla.objects.filter(
             Q(tecnico_asignado=user) |
             Q(tecnicos_adicionales=user)
@@ -2298,8 +2304,8 @@ def imprimir_planilla_municipio_pdf(request):
         planillas = planillas.filter(municipio__icontains=municipio_filtro)
 
     # Obtener mascotas del municipio
-    if user.tipo_usuario == 'tecnico':
-        # Técnicos ven todas las mascotas de sus municipios
+    if user.tipo_usuario in ['administrador', 'tecnico']:
+        # Administradores y técnicos ven todas las mascotas de sus municipios
         mascotas = Mascota.objects.filter(
             responsable__planilla__in=planillas
         ).select_related('responsable', 'responsable__planilla')

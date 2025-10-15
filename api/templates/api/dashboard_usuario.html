@@ -255,7 +255,7 @@
                 📊 Ver Reportes
             </a>
 
-            {% if user_type == 'Técnico' or user_type == 'Vacunador' %}
+            {% if user_type == 'Técnico' or user_type == 'Vacunador' or user_type == 'Administrador' %}
             <button onclick="mostrarModalPlanilla()" style="
                 background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
                 color: white;
@@ -848,7 +848,7 @@
                         font-size: 1rem;
                         color: #2d3748;
                         background-color: white;
-                    " required>
+                    " {% if user_type != 'Administrador' %}required{% endif %}>
                         {% if user_type == 'Administrador' %}
                         <option value="">Todos los municipios</option>
                         {% endif %}
@@ -863,6 +863,10 @@
                         {% else %}
                         El reporte solo incluirá tus vacunaciones
                         {% endif %}
+                    </small>
+                    {% else %}
+                    <small style="color: #718096; display: block; margin-top: 0.5rem;">
+                        El reporte incluirá todos los vacunadores de todos los municipios del sistema
                     </small>
                     {% endif %}
                 </div>
@@ -953,7 +957,7 @@
                         font-size: 1rem;
                         color: #2d3748;
                         background-color: white;
-                    " required>
+                    " {% if user_type != 'Administrador' %}required{% endif %}>
                         {% if user_type == 'Administrador' %}
                         <option value="">Todos los municipios</option>
                         {% endif %}
@@ -964,6 +968,10 @@
                     {% if user_type != 'Administrador' %}
                     <small style="color: #718096; display: block; margin-top: 0.5rem;">
                         Solo puedes ver tus municipios asignados
+                    </small>
+                    {% else %}
+                    <small style="color: #718096; display: block; margin-top: 0.5rem;">
+                        Puedes seleccionar "Todos los municipios" o un municipio específico
                     </small>
                     {% endif %}
                 </div>
@@ -1103,23 +1111,22 @@
             const tipoFecha = document.getElementById('tipo-fecha-planilla').value;
             const fechaPlanilla = document.getElementById('fecha-planilla').value;
 
-            // Validar que se haya seleccionado un municipio
-            if (!municipio) {
-                alert('Por favor selecciona un municipio');
-                return;
-            }
-
             let url = '{% url "imprimir_planilla_municipio" %}';
             const params = new URLSearchParams();
 
-            params.append('municipio', municipio);
+            // Solo agregar municipio si tiene valor (no vacío)
+            if (municipio) {
+                params.append('municipio', municipio);
+            }
 
             // Solo agregar fecha si se seleccionó fecha específica
             if (tipoFecha === 'especifica' && fechaPlanilla) {
                 params.append('fecha', fechaPlanilla);
             }
 
-            url += '?' + params.toString();
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
 
             window.open(url, '_blank');
             cerrarModalPlanilla();
@@ -1153,16 +1160,17 @@
         function generarEstadisticoPDF() {
             const municipio = document.getElementById('municipio-estadistico').value;
 
-            // Validar que se haya seleccionado un municipio
-            if (!municipio) {
-                alert('Por favor selecciona un municipio');
-                return;
-            }
-
             let url = '{% url "reporte_estadistico_vacunacion" %}';
             const params = new URLSearchParams();
-            params.append('municipio', municipio);
-            url += '?' + params.toString();
+
+            // Solo agregar municipio si tiene valor (no vacío)
+            if (municipio) {
+                params.append('municipio', municipio);
+            }
+
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
 
             window.open(url, '_blank');
             cerrarModalEstadistico();
