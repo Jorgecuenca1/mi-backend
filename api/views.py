@@ -1969,6 +1969,9 @@ def reporte_estadistico_vacunacion_pdf(request):
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('login')
 
+    # Importar fix de compatibilidad para ReportLab con Python 3.8
+    from . import pdf_utils
+
     from django.http import HttpResponse
     from reportlab.lib.pagesizes import letter, landscape
     from reportlab.lib.units import inch
@@ -2250,6 +2253,9 @@ def imprimir_planilla_municipio_pdf(request):
     if user.tipo_usuario not in ['tecnico', 'vacunador']:
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('login')
+
+    # Importar fix de compatibilidad para ReportLab con Python 3.8
+    from . import pdf_utils
 
     from django.http import HttpResponse
     from reportlab.lib.pagesizes import letter, landscape
