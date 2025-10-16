@@ -2320,14 +2320,15 @@ def imprimir_planilla_municipio_pdf(request):
     if fecha_reporte:
         mascotas = mascotas.filter(creado__date=fecha_reporte)
 
-    # Agrupar mascotas por municipio y fecha
+    # Agrupar mascotas por municipio, fecha y vacunador
     from collections import defaultdict
-    mascotas_por_municipio_fecha = defaultdict(lambda: defaultdict(list))
+    mascotas_por_municipio_fecha_vacunador = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
-    for mascota in mascotas.order_by('responsable__planilla__municipio', 'creado__date', 'responsable__nombre'):
+    for mascota in mascotas.order_by('responsable__planilla__municipio', 'creado__date', 'created_by__username', 'responsable__nombre'):
         municipio = mascota.responsable.planilla.municipio
         fecha = mascota.creado.date()
-        mascotas_por_municipio_fecha[municipio][fecha].append(mascota)
+        vacunador = mascota.created_by  # Usuario que creó la mascota
+        mascotas_por_municipio_fecha_vacunador[municipio][fecha][vacunador].append(mascota)
 
     # Crear el PDF
     buffer = BytesIO()
@@ -2359,7 +2360,7 @@ def imprimir_planilla_municipio_pdf(request):
     )
 
     # Si no hay mascotas
-    if not mascotas_por_municipio_fecha:
+    if not mascotas_por_municipio_fecha_vacunador:
         title = Paragraph(
             f"Planilla de Vacunación - {user.get_tipo_usuario_display()}: {user.username}",
             title_style
@@ -2374,132 +2375,156 @@ def imprimir_planilla_municipio_pdf(request):
         elements.append(no_data)
     else:
         # Procesar cada municipio
-        first_municipio = True
-        for municipio, fechas_dict in mascotas_por_municipio_fecha.items():
+        first_page = True
+        for municipio, fechas_dict in mascotas_por_municipio_fecha_vacunador.items():
             # Procesar cada fecha
-            for fecha, mascotas_list in fechas_dict.items():
-                if not first_municipio:
-                    elements.append(PageBreak())
-                first_municipio = False
-
-                # Título de la página
-                title = Paragraph(
-                    f"Planilla de Vacunación - {municipio}",
-                    title_style
-                )
-                elements.append(title)
-
-                subtitle = Paragraph(
-                    f"Fecha: {fecha.strftime('%d/%m/%Y')} | {user.get_tipo_usuario_display()}: {user.username} | Total: {len(mascotas_list)} mascotas",
-                    subtitle_style
-                )
-                elements.append(subtitle)
-                elements.append(Spacer(1, 15))
-
-                # Dividir en páginas de 20 mascotas
-                MASCOTAS_POR_PAGINA = 20
-                total_paginas = (len(mascotas_list) + MASCOTAS_POR_PAGINA - 1) // MASCOTAS_POR_PAGINA
-
-                for pagina in range(total_paginas):
-                    if pagina > 0:
+            for fecha, vacunadores_dict in fechas_dict.items():
+                # Procesar cada vacunador
+                for vacunador, mascotas_list in vacunadores_dict.items():
+                    if not first_page:
                         elements.append(PageBreak())
-                        # Repetir título en cada página
-                        elements.append(Paragraph(
-                            f"Planilla de Vacunación - {municipio} (Continuación)",
-                            title_style
-                        ))
-                        elements.append(Paragraph(
-                            f"Fecha: {fecha.strftime('%d/%m/%Y')} | Página {pagina + 1} de {total_paginas}",
-                            subtitle_style
-                        ))
-                        elements.append(Spacer(1, 15))
+                    first_page = False
 
-                    inicio = pagina * MASCOTAS_POR_PAGINA
-                    fin = min(inicio + MASCOTAS_POR_PAGINA, len(mascotas_list))
-                    mascotas_pagina = mascotas_list[inicio:fin]
+                    # Obtener información del vacunador
+                    vacunador_nombre = vacunador.get_full_name() if vacunador and vacunador.get_full_name() else (vacunador.username if vacunador else "Sin asignar")
+                    vacunador_username = vacunador.username if vacunador else "Sin asignar"
 
-                    # Crear tabla de mascotas
-                    data = [[
-                        '#',
-                        'Responsable',
-                        'Teléfono',
-                        'Mascota',
-                        'Tipo',
-                        'Raza',
-                        'Color',
-                        'Antec.\nVacunal',
-                        'Finca/Predio',
-                        'Ubicación',
-                        'Lote\nVacuna'
-                    ]]
+                    # Título de la página
+                    title = Paragraph(
+                        f"Planilla de Vacunación - {municipio}",
+                        title_style
+                    )
+                    elements.append(title)
 
-                    for i, mascota in enumerate(mascotas_pagina, inicio + 1):
-                        responsable = mascota.responsable
+                    subtitle = Paragraph(
+                        f"Fecha: {fecha.strftime('%d/%m/%Y')} | Vacunador: {vacunador_username} | Total: {len(mascotas_list)} mascotas",
+                        subtitle_style
+                    )
+                    elements.append(subtitle)
+                    elements.append(Spacer(1, 15))
 
-                        # Determinar ubicación (vereda, centro poblado o barrio)
-                        if responsable.zona == 'vereda':
-                            ubicacion = f"V: {responsable.nombre_zona}"
-                        elif responsable.zona == 'centro poblado':
-                            ubicacion = f"CP: {responsable.nombre_zona}"
-                        elif responsable.zona == 'barrio':
-                            ubicacion = f"B: {responsable.nombre_zona}"
-                        else:
-                            ubicacion = responsable.nombre_zona
+                    # Dividir en páginas de 20 mascotas
+                    MASCOTAS_POR_PAGINA = 20
+                    total_paginas = (len(mascotas_list) + MASCOTAS_POR_PAGINA - 1) // MASCOTAS_POR_PAGINA
 
-                        data.append([
-                            str(i),
-                            responsable.nombre[:20],  # Limitar caracteres
-                            responsable.telefono,
-                            mascota.nombre[:15],
-                            'P' if mascota.tipo == 'perro' else 'G',
-                            mascota.raza,
-                            mascota.color[:12],
-                            'Sí' if mascota.antecedente_vacunal else 'No',
-                            responsable.finca[:15],
-                            ubicacion[:20],
-                            responsable.lote_vacuna[:10]
+                    for pagina in range(total_paginas):
+                        if pagina > 0:
+                            elements.append(PageBreak())
+                            # Repetir título en cada página
+                            elements.append(Paragraph(
+                                f"Planilla de Vacunación - {municipio} (Continuación)",
+                                title_style
+                            ))
+                            elements.append(Paragraph(
+                                f"Fecha: {fecha.strftime('%d/%m/%Y')} | Vacunador: {vacunador_username} | Página {pagina + 1} de {total_paginas}",
+                                subtitle_style
+                            ))
+                            elements.append(Spacer(1, 15))
+
+                        inicio = pagina * MASCOTAS_POR_PAGINA
+                        fin = min(inicio + MASCOTAS_POR_PAGINA, len(mascotas_list))
+                        mascotas_pagina = mascotas_list[inicio:fin]
+
+                        # Crear tabla de mascotas
+                        data = [[
+                            '#',
+                            'Responsable',
+                            'Teléfono',
+                            'Mascota',
+                            'Tipo',
+                            'Raza',
+                            'Color',
+                            'Antec.\nVacunal',
+                            'Finca/Predio',
+                            'Ubicación',
+                            'Lote\nVacuna'
+                        ]]
+
+                        for i, mascota in enumerate(mascotas_pagina, inicio + 1):
+                            responsable = mascota.responsable
+
+                            # Determinar ubicación (vereda, centro poblado o barrio)
+                            if responsable.zona == 'vereda':
+                                ubicacion = f"V: {responsable.nombre_zona}"
+                            elif responsable.zona == 'centro poblado':
+                                ubicacion = f"CP: {responsable.nombre_zona}"
+                            elif responsable.zona == 'barrio':
+                                ubicacion = f"B: {responsable.nombre_zona}"
+                            else:
+                                ubicacion = responsable.nombre_zona
+
+                            data.append([
+                                str(i),
+                                responsable.nombre[:20],  # Limitar caracteres
+                                responsable.telefono,
+                                mascota.nombre[:15],
+                                'P' if mascota.tipo == 'perro' else 'G',
+                                mascota.raza,
+                                mascota.color[:12],
+                                'Sí' if mascota.antecedente_vacunal else 'No',
+                                responsable.finca[:15],
+                                ubicacion[:20],
+                                responsable.lote_vacuna[:10]
+                            ])
+
+                        # Configurar tabla
+                        table = Table(data, colWidths=[
+                            0.3*inch,  # #
+                            1.2*inch,  # Responsable
+                            0.8*inch,  # Teléfono
+                            0.9*inch,  # Mascota
+                            0.4*inch,  # Tipo
+                            0.5*inch,  # Raza
+                            0.8*inch,  # Color
+                            0.5*inch,  # Antec. Vacunal
+                            1.0*inch,  # Finca
+                            1.2*inch,  # Ubicación
+                            0.6*inch   # Lote Vacuna
                         ])
 
-                    # Configurar tabla
-                    table = Table(data, colWidths=[
-                        0.3*inch,  # #
-                        1.2*inch,  # Responsable
-                        0.8*inch,  # Teléfono
-                        0.9*inch,  # Mascota
-                        0.4*inch,  # Tipo
-                        0.5*inch,  # Raza
-                        0.8*inch,  # Color
-                        0.5*inch,  # Antec. Vacunal
-                        1.0*inch,  # Finca
-                        1.2*inch,  # Ubicación
-                        0.6*inch   # Lote Vacuna
-                    ])
+                        table.setStyle(TableStyle([
+                            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4299e1')),
+                            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                            ('FONTSIZE', (0, 0), (-1, 0), 7),
+                            ('FONTSIZE', (0, 1), (-1, -1), 6),
+                            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                            ('TOPPADDING', (0, 0), (-1, 0), 8),
+                            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f7f7f7')])
+                        ]))
 
-                    table.setStyle(TableStyle([
-                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4299e1')),
-                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                        ('FONTSIZE', (0, 0), (-1, 0), 7),
-                        ('FONTSIZE', (0, 1), (-1, -1), 6),
-                        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-                        ('TOPPADDING', (0, 0), (-1, 0), 8),
-                        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f7f7f7')])
-                    ]))
-
-                    elements.append(table)
-
-                    # Información de página
-                    if pagina < total_paginas - 1:
+                        elements.append(table)
                         elements.append(Spacer(1, 10))
-                        info_pagina = Paragraph(
-                            f"<i>Mostrando mascotas {inicio + 1} a {fin} de {len(mascotas_list)}</i>",
-                            subtitle_style
+
+                        # Agregar información del vacunador que diligencio esta página
+                        info_vacunador_style = ParagraphStyle(
+                            'InfoVacunador',
+                            parent=styles['Normal'],
+                            fontSize=9,
+                            textColor=colors.black,
+                            alignment=0  # Alineación izquierda
                         )
-                        elements.append(info_pagina)
+
+                        diligenciado_text = f"<b>Diligenciado por:</b> {vacunador_nombre}"
+                        diligenciado = Paragraph(diligenciado_text, info_vacunador_style)
+                        elements.append(diligenciado)
+
+                        digitador_text = f"<b>Digitador por:</b> {vacunador_username}"
+                        digitador = Paragraph(digitador_text, info_vacunador_style)
+                        elements.append(digitador)
+
+                        # Información de página
+                        if pagina < total_paginas - 1:
+                            elements.append(Spacer(1, 10))
+                            info_pagina = Paragraph(
+                                f"<i>Mostrando mascotas {inicio + 1} a {fin} de {len(mascotas_list)}</i>",
+                                subtitle_style
+                            )
+                            elements.append(info_pagina)
 
     # Pie de página general
     elements.append(Spacer(1, 20))

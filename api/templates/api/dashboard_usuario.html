@@ -48,6 +48,23 @@
             font-weight: 600;
         }
 
+        .user-details {
+            background: #f7fafc;
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            border-left: 3px solid #4299e1;
+        }
+
+        .user-details div {
+            font-size: 0.85rem;
+            color: #4a5568;
+            margin: 0.2rem 0;
+        }
+
+        .user-details strong {
+            color: #2d3748;
+        }
+
         .logout-btn {
             background: #e53e3e;
             color: white;
@@ -185,6 +202,15 @@
                 text-align: center;
             }
 
+            .user-info {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .user-details {
+                width: 100%;
+            }
+
             .stats-grid {
                 grid-template-columns: 1fr;
             }
@@ -201,6 +227,10 @@
         <h1>🏥 Sistema de Vacunación</h1>
         <div class="user-info">
             <span class="user-badge">{{ user_type }}: {{ user.username }}</span>
+            <div class="user-details">
+                <div><strong>First name:</strong> {{ user.first_name|default:"No especificado" }}</div>
+                <div><strong>Last name:</strong> {{ user.last_name|default:"No especificado" }}</div>
+            </div>
             <a href="{% url 'logout' %}" class="logout-btn">Cerrar Sesión</a>
         </div>
     </div>
