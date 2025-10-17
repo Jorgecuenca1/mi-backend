@@ -60,4 +60,7 @@ urlpatterns = [
     # URLs para edición de fechas de creación
     path('responsables/<int:responsable_id>/fecha/', views.update_fecha_creacion_responsable, name='update_fecha_creacion_responsable'),
     path('mascotas/<int:mascota_id>/fecha/', views.update_fecha_creacion_mascota, name='update_fecha_creacion_mascota'),
+
+    # URL para importación masiva de responsables y mascotas
+    path('importar/responsables-mascotas/', views.importar_responsables_mascotas, name='importar_responsables_mascotas'),
 ]

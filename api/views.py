@@ -950,6 +950,293 @@ def dashboard_principal(request):
 
 
 @login_required
+def importar_responsables_mascotas(request):
+    """
+    Vista para importación masiva de responsables y mascotas desde Excel/CSV
+    Solo accesible para administradores
+    """
+    # Verificar que el usuario sea administrador
+    if request.user.tipo_usuario != 'administrador':
+        messages.error(request, 'No tienes permisos para acceder a esta función.')
+        return redirect('dashboard_principal')
+
+    if request.method == 'POST':
+        # Verificar que se haya subido un archivo
+        if 'archivo' not in request.FILES:
+            messages.error(request, 'No se ha seleccionado ningún archivo.')
+            return redirect('importar_responsables_mascotas')
+
+        archivo = request.FILES['archivo']
+        planilla_id = request.POST.get('planilla_id')
+
+        # Verificar que se haya seleccionado una planilla
+        if not planilla_id:
+            messages.error(request, 'Debes seleccionar una planilla.')
+            return redirect('importar_responsables_mascotas')
+
+        try:
+            planilla = Planilla.objects.get(id=planilla_id)
+        except Planilla.DoesNotExist:
+            messages.error(request, 'La planilla seleccionada no existe.')
+            return redirect('importar_responsables_mascotas')
+
+        # Verificar extensión del archivo
+        extension = archivo.name.split('.')[-1].lower()
+        if extension not in ['xlsx', 'xls', 'csv']:
+            messages.error(request, 'El archivo debe ser Excel (.xlsx, .xls) o CSV (.csv).')
+            return redirect('importar_responsables_mascotas')
+
+        try:
+            import openpyxl
+            from decimal import Decimal, InvalidOperation
+
+            # Procesar archivo Excel
+            if extension in ['xlsx', 'xls']:
+                wb = openpyxl.load_workbook(archivo)
+                ws = wb.active
+
+                # Leer encabezados (primera fila)
+                headers = [cell.value for cell in ws[1]]
+
+                # Diccionario para agrupar mascotas por responsable
+                responsables_dict = {}
+                errores = []
+                linea = 1  # Contador de líneas
+
+                # Procesar cada fila (desde la segunda fila en adelante)
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    linea += 1
+
+                    # Saltar filas vacías
+                    if not any(row):
+                        continue
+
+                    # Crear diccionario con los datos de la fila
+                    datos = dict(zip(headers, row))
+
+                    # Validar campos obligatorios del responsable
+                    if not datos.get('nombre_responsable'):
+                        errores.append(f"Línea {linea}: Falta el nombre del responsable")
+                        continue
+
+                    # Crear clave única para el responsable (nombre + teléfono + finca)
+                    clave_responsable = (
+                        str(datos.get('nombre_responsable', '')).strip(),
+                        str(datos.get('telefono', '')).strip(),
+                        str(datos.get('finca', '')).strip()
+                    )
+
+                    # Si el responsable no existe en el diccionario, agregarlo
+                    if clave_responsable not in responsables_dict:
+                        responsables_dict[clave_responsable] = {
+                            'nombre': datos.get('nombre_responsable', '').strip(),
+                            'telefono': datos.get('telefono', '').strip(),
+                            'finca': datos.get('finca', '').strip(),
+                            'zona': datos.get('zona', 'Sin especificar'),
+                            'nombre_zona': datos.get('nombre_zona', 'Sin especificar'),
+                            'lote_vacuna': datos.get('lote_vacuna', 'Sin especificar'),
+                            'mascotas': []
+                        }
+
+                    # Agregar mascota si hay nombre de mascota
+                    if datos.get('nombre_mascota'):
+                        mascota_data = {
+                            'nombre': str(datos.get('nombre_mascota', '')).strip(),
+                            'tipo': str(datos.get('tipo_mascota', 'perro')).lower().strip(),
+                            'raza': str(datos.get('raza_mascota', 'M')).strip(),
+                            'color': str(datos.get('color_mascota', 'Sin especificar')).strip(),
+                            'antecedente_vacunal': str(datos.get('antecedente_vacunal', 'NO')).upper().strip() in ['SI', 'SÍ', 'S', 'TRUE', '1'],
+                            'esterilizado': str(datos.get('esterilizado', 'NO')).upper().strip() in ['SI', 'SÍ', 'S', 'TRUE', '1'],
+                            'latitud': None,
+                            'longitud': None
+                        }
+
+                        # Procesar coordenadas si existen
+                        try:
+                            if datos.get('latitud'):
+                                mascota_data['latitud'] = Decimal(str(datos.get('latitud')))
+                        except (InvalidOperation, ValueError):
+                            errores.append(f"Línea {linea}: Latitud inválida")
+
+                        try:
+                            if datos.get('longitud'):
+                                mascota_data['longitud'] = Decimal(str(datos.get('longitud')))
+                        except (InvalidOperation, ValueError):
+                            errores.append(f"Línea {linea}: Longitud inválida")
+
+                        responsables_dict[clave_responsable]['mascotas'].append(mascota_data)
+
+                # Crear responsables y mascotas en la base de datos
+                responsables_creados = 0
+                mascotas_creadas = 0
+
+                for clave, datos_responsable in responsables_dict.items():
+                    try:
+                        # Crear responsable
+                        responsable = Responsable.objects.create(
+                            nombre=datos_responsable['nombre'],
+                            telefono=datos_responsable['telefono'],
+                            finca=datos_responsable['finca'],
+                            zona=datos_responsable['zona'],
+                            nombre_zona=datos_responsable['nombre_zona'],
+                            lote_vacuna=datos_responsable['lote_vacuna'],
+                            planilla=planilla,
+                            created_by=request.user
+                        )
+                        responsables_creados += 1
+
+                        # Crear mascotas
+                        for mascota_data in datos_responsable['mascotas']:
+                            Mascota.objects.create(
+                                nombre=mascota_data['nombre'],
+                                tipo=mascota_data['tipo'],
+                                raza=mascota_data['raza'],
+                                color=mascota_data['color'],
+                                antecedente_vacunal=mascota_data['antecedente_vacunal'],
+                                esterilizado=mascota_data['esterilizado'],
+                                latitud=mascota_data['latitud'],
+                                longitud=mascota_data['longitud'],
+                                responsable=responsable,
+                                created_by=request.user
+                            )
+                            mascotas_creadas += 1
+
+                    except Exception as e:
+                        errores.append(f"Error al crear responsable {datos_responsable['nombre']}: {str(e)}")
+
+                # Mostrar resultados
+                if errores:
+                    messages.warning(request, f"Importación completada con errores. Responsables creados: {responsables_creados}, Mascotas creadas: {mascotas_creadas}. Errores: {'; '.join(errores[:5])}")
+                else:
+                    messages.success(request, f"Importación exitosa. Se crearon {responsables_creados} responsables y {mascotas_creadas} mascotas.")
+
+                return redirect('dashboard_administrador')
+
+            elif extension == 'csv':
+                import csv
+                import io
+
+                # Leer archivo CSV
+                archivo_texto = archivo.read().decode('utf-8-sig')
+                csv_reader = csv.DictReader(io.StringIO(archivo_texto))
+
+                # Diccionario para agrupar mascotas por responsable
+                responsables_dict = {}
+                errores = []
+                linea = 1
+
+                for row in csv_reader:
+                    linea += 1
+
+                    # Validar campos obligatorios
+                    if not row.get('nombre_responsable'):
+                        errores.append(f"Línea {linea}: Falta el nombre del responsable")
+                        continue
+
+                    # Crear clave única para el responsable
+                    clave_responsable = (
+                        row.get('nombre_responsable', '').strip(),
+                        row.get('telefono', '').strip(),
+                        row.get('finca', '').strip()
+                    )
+
+                    # Si el responsable no existe, agregarlo
+                    if clave_responsable not in responsables_dict:
+                        responsables_dict[clave_responsable] = {
+                            'nombre': row.get('nombre_responsable', '').strip(),
+                            'telefono': row.get('telefono', '').strip(),
+                            'finca': row.get('finca', '').strip(),
+                            'zona': row.get('zona', 'Sin especificar'),
+                            'nombre_zona': row.get('nombre_zona', 'Sin especificar'),
+                            'lote_vacuna': row.get('lote_vacuna', 'Sin especificar'),
+                            'mascotas': []
+                        }
+
+                    # Agregar mascota
+                    if row.get('nombre_mascota'):
+                        mascota_data = {
+                            'nombre': row.get('nombre_mascota', '').strip(),
+                            'tipo': row.get('tipo_mascota', 'perro').lower().strip(),
+                            'raza': row.get('raza_mascota', 'M').strip(),
+                            'color': row.get('color_mascota', 'Sin especificar').strip(),
+                            'antecedente_vacunal': row.get('antecedente_vacunal', 'NO').upper().strip() in ['SI', 'SÍ', 'S', 'TRUE', '1'],
+                            'esterilizado': row.get('esterilizado', 'NO').upper().strip() in ['SI', 'SÍ', 'S', 'TRUE', '1'],
+                            'latitud': None,
+                            'longitud': None
+                        }
+
+                        # Procesar coordenadas
+                        try:
+                            if row.get('latitud'):
+                                mascota_data['latitud'] = Decimal(row.get('latitud'))
+                        except (InvalidOperation, ValueError):
+                            errores.append(f"Línea {linea}: Latitud inválida")
+
+                        try:
+                            if row.get('longitud'):
+                                mascota_data['longitud'] = Decimal(row.get('longitud'))
+                        except (InvalidOperation, ValueError):
+                            errores.append(f"Línea {linea}: Longitud inválida")
+
+                        responsables_dict[clave_responsable]['mascotas'].append(mascota_data)
+
+                # Crear en la base de datos
+                responsables_creados = 0
+                mascotas_creadas = 0
+
+                for clave, datos_responsable in responsables_dict.items():
+                    try:
+                        responsable = Responsable.objects.create(
+                            nombre=datos_responsable['nombre'],
+                            telefono=datos_responsable['telefono'],
+                            finca=datos_responsable['finca'],
+                            zona=datos_responsable['zona'],
+                            nombre_zona=datos_responsable['nombre_zona'],
+                            lote_vacuna=datos_responsable['lote_vacuna'],
+                            planilla=planilla,
+                            created_by=request.user
+                        )
+                        responsables_creados += 1
+
+                        for mascota_data in datos_responsable['mascotas']:
+                            Mascota.objects.create(
+                                nombre=mascota_data['nombre'],
+                                tipo=mascota_data['tipo'],
+                                raza=mascota_data['raza'],
+                                color=mascota_data['color'],
+                                antecedente_vacunal=mascota_data['antecedente_vacunal'],
+                                esterilizado=mascota_data['esterilizado'],
+                                latitud=mascota_data['latitud'],
+                                longitud=mascota_data['longitud'],
+                                responsable=responsable,
+                                created_by=request.user
+                            )
+                            mascotas_creadas += 1
+
+                    except Exception as e:
+                        errores.append(f"Error al crear responsable {datos_responsable['nombre']}: {str(e)}")
+
+                if errores:
+                    messages.warning(request, f"Importación completada con errores. Responsables: {responsables_creados}, Mascotas: {mascotas_creadas}. Errores: {'; '.join(errores[:5])}")
+                else:
+                    messages.success(request, f"Importación exitosa. {responsables_creados} responsables y {mascotas_creadas} mascotas creadas.")
+
+                return redirect('dashboard_administrador')
+
+        except ImportError:
+            messages.error(request, 'Error: La librería openpyxl no está instalada. Ejecuta: pip install openpyxl')
+            return redirect('importar_responsables_mascotas')
+
+        except Exception as e:
+            messages.error(request, f'Error al procesar el archivo: {str(e)}')
+            return redirect('importar_responsables_mascotas')
+
+    # GET request - mostrar formulario
+    planillas = Planilla.objects.all().order_by('municipio', 'nombre')
+    return render(request, 'api/importar_responsables.html', {'planillas': planillas})
+
+
+@login_required
 def mapa_mascotas(request):
     """Vista para mostrar el mapa con las mascotas georreferenciadas"""
     return render(request, 'api/mapa_mascotas.html')

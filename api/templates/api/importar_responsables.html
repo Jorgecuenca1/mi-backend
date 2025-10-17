@@ -1,0 +1,451 @@
+{% extends "api/base.html" %}
+
+{% block title %}Importación Masiva - VetControl{% endblock %}
+
+{% block content %}
+<div class="import-container">
+  <div class="import-header">
+    <div class="header-content">
+      <h1>📊 Importación Masiva de Responsables y Mascotas</h1>
+      <p>Sube un archivo Excel o CSV para importar múltiples responsables con sus mascotas</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Instrucciones</h2>
+    </div>
+    <div class="instructions">
+      <div class="instruction-item">
+        <span class="instruction-icon">📝</span>
+        <div class="instruction-content">
+          <h3>Formato del Archivo</h3>
+          <p>El archivo debe tener las siguientes columnas (en este orden):</p>
+          <ul>
+            <li><strong>nombre_responsable</strong> - Nombre completo del responsable (obligatorio)</li>
+            <li><strong>telefono</strong> - Teléfono del responsable</li>
+            <li><strong>finca</strong> - Nombre de la finca o propiedad</li>
+            <li><strong>zona</strong> - Zona de vacunación</li>
+            <li><strong>nombre_zona</strong> - Nombre descriptivo de la zona</li>
+            <li><strong>lote_vacuna</strong> - Lote de la vacuna</li>
+            <li><strong>nombre_mascota</strong> - Nombre de la mascota</li>
+            <li><strong>tipo_mascota</strong> - Tipo: "perro" o "gato"</li>
+            <li><strong>raza_mascota</strong> - Raza: "M", "H" o "PME" (solo para perros)</li>
+            <li><strong>color_mascota</strong> - Color de la mascota</li>
+            <li><strong>antecedente_vacunal</strong> - "SI" o "NO"</li>
+            <li><strong>esterilizado</strong> - "SI" o "NO"</li>
+            <li><strong>latitud</strong> - Coordenada GPS (opcional)</li>
+            <li><strong>longitud</strong> - Coordenada GPS (opcional)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="instruction-item">
+        <span class="instruction-icon">💡</span>
+        <div class="instruction-content">
+          <h3>Importante</h3>
+          <ul>
+            <li>Si un responsable tiene varias mascotas, repite sus datos en cada fila con diferente mascota</li>
+            <li>El sistema agrupará automáticamente las mascotas por responsable</li>
+            <li>Los campos opcionales pueden dejarse vacíos</li>
+            <li>Para archivos CSV, usa codificación UTF-8</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="instruction-item">
+        <span class="instruction-icon">📄</span>
+        <div class="instruction-content">
+          <h3>Ejemplo</h3>
+          <div class="example-table">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>nombre_responsable</th>
+                  <th>telefono</th>
+                  <th>finca</th>
+                  <th>zona</th>
+                  <th>nombre_mascota</th>
+                  <th>tipo_mascota</th>
+                  <th>raza_mascota</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Juan Pérez</td>
+                  <td>3001234567</td>
+                  <td>La Esperanza</td>
+                  <td>Zona 1</td>
+                  <td>Firulais</td>
+                  <td>perro</td>
+                  <td>M</td>
+                </tr>
+                <tr>
+                  <td>Juan Pérez</td>
+                  <td>3001234567</td>
+                  <td>La Esperanza</td>
+                  <td>Zona 1</td>
+                  <td>Michi</td>
+                  <td>gato</td>
+                  <td>M</td>
+                </tr>
+                <tr>
+                  <td>María García</td>
+                  <td>3009876543</td>
+                  <td>El Paraíso</td>
+                  <td>Zona 2</td>
+                  <td>Max</td>
+                  <td>perro</td>
+                  <td>H</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="example-note">En este ejemplo, Juan Pérez tiene 2 mascotas y María García tiene 1.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Subir Archivo</h2>
+    </div>
+    <form method="post" enctype="multipart/form-data" class="import-form">
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label for="planilla_id">Selecciona la Planilla/Municipio *</label>
+        <select name="planilla_id" id="planilla_id" class="form-control" required>
+          <option value="">-- Selecciona una planilla --</option>
+          {% for planilla in planillas %}
+          <option value="{{ planilla.id }}">
+            {{ planilla.municipio }} - {{ planilla.nombre }} ({{ planilla.urbano_rural|title }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="archivo">Archivo Excel o CSV *</label>
+        <div class="file-upload-wrapper">
+          <input type="file" name="archivo" id="archivo" accept=".xlsx,.xls,.csv" required>
+          <div class="file-upload-placeholder">
+            <span class="upload-icon">📁</span>
+            <span>Haz clic para seleccionar un archivo</span>
+            <small>Formatos aceptados: .xlsx, .xls, .csv</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <a href="{% url 'dashboard_administrador' %}" class="btn btn-secondary">
+          <span class="btn-icon">⬅️</span>
+          Cancelar
+        </a>
+        <button type="submit" class="btn btn-primary btn-lg">
+          <span class="btn-icon">⬆️</span>
+          Importar Datos
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .import-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem 0;
+  }
+
+  .import-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+
+  .header-content h1 {
+    font-size: 2rem;
+    margin: 0 0 0.5rem 0;
+    font-weight: bold;
+  }
+
+  .header-content p {
+    font-size: 1.1rem;
+    margin: 0;
+    opacity: 0.9;
+  }
+
+  .instructions {
+    margin-top: 1.5rem;
+  }
+
+  .instruction-item {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border-left: 4px solid #667eea;
+  }
+
+  .instruction-icon {
+    font-size: 2.5rem;
+    flex-shrink: 0;
+  }
+
+  .instruction-content h3 {
+    font-size: 1.3rem;
+    color: #495057;
+    margin: 0 0 1rem 0;
+  }
+
+  .instruction-content p {
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+  }
+
+  .instruction-content ul {
+    margin: 1rem 0;
+    padding-left: 1.5rem;
+  }
+
+  .instruction-content li {
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+  }
+
+  .instruction-content li strong {
+    color: #495057;
+    font-family: 'Courier New', monospace;
+    background: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .example-table {
+    overflow-x: auto;
+    margin: 1rem 0;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+  }
+
+  .example-table .table {
+    margin: 0;
+    background: white;
+  }
+
+  .example-table .table th {
+    background: #667eea;
+    color: white;
+    font-size: 0.85rem;
+    padding: 10px;
+    white-space: nowrap;
+  }
+
+  .example-table .table td {
+    font-size: 0.85rem;
+    padding: 10px;
+    white-space: nowrap;
+  }
+
+  .example-note {
+    font-style: italic;
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+  }
+
+  .import-form {
+    margin-top: 1.5rem;
+  }
+
+  .form-group {
+    margin-bottom: 2rem;
+  }
+
+  .form-group label {
+    display: block;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: all 0.3s;
+    background: #f8f9fa;
+  }
+
+  .form-control:focus {
+    outline: none;
+    border-color: #667eea;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+
+  .file-upload-wrapper {
+    position: relative;
+    cursor: pointer;
+  }
+
+  .file-upload-wrapper input[type="file"] {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    z-index: 2;
+  }
+
+  .file-upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 3rem 2rem;
+    border: 2px dashed #dee2e6;
+    border-radius: 12px;
+    background: #f8f9fa;
+    transition: all 0.3s;
+  }
+
+  .file-upload-wrapper:hover .file-upload-placeholder {
+    border-color: #667eea;
+    background: #f0f2ff;
+  }
+
+  .upload-icon {
+    font-size: 3rem;
+  }
+
+  .file-upload-placeholder span {
+    font-weight: 500;
+    color: #495057;
+  }
+
+  .file-upload-placeholder small {
+    color: #6c757d;
+    font-size: 0.85rem;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  .btn-lg {
+    padding: 16px 32px;
+    font-size: 1.1rem;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    color: white;
+  }
+
+  .btn-secondary {
+    background: #6c757d;
+    color: white;
+  }
+
+  .btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-2px);
+    color: white;
+  }
+
+  .btn-icon {
+    font-size: 1.2rem;
+  }
+
+  @media (max-width: 768px) {
+    .instruction-item {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .instruction-icon {
+      font-size: 3rem;
+    }
+
+    .form-actions {
+      flex-direction: column;
+    }
+
+    .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .example-table {
+      font-size: 0.8rem;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const fileInput = document.getElementById('archivo');
+    const placeholder = document.querySelector('.file-upload-placeholder');
+
+    fileInput.addEventListener('change', function () {
+      if (this.files.length > 0) {
+        const fileName = this.files[0].name;
+        const fileSize = (this.files[0].size / 1024).toFixed(2);
+
+        placeholder.innerHTML = `
+          <span class="upload-icon">✅</span>
+          <span><strong>Archivo seleccionado:</strong> ${fileName}</span>
+          <small>${fileSize} KB</small>
+        `;
+        placeholder.style.borderColor = '#28a745';
+        placeholder.style.background = '#d4edda';
+      } else {
+        placeholder.innerHTML = `
+          <span class="upload-icon">📁</span>
+          <span>Haz clic para seleccionar un archivo</span>
+          <small>Formatos aceptados: .xlsx, .xls, .csv</small>
+        `;
+        placeholder.style.borderColor = '#dee2e6';
+        placeholder.style.background = '#f8f9fa';
+      }
+    });
+  });
+</script>
+{% endblock %}
