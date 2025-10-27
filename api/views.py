@@ -1028,25 +1028,32 @@ def importar_responsables_mascotas(request):
 
                     # Si el responsable no existe en el diccionario, agregarlo
                     if clave_responsable not in responsables_dict:
+                        # Intentar obtener lote_vacuna de diferentes columnas posibles
+                        lote_vacuna = datos.get('lote_vacuna') or datos.get('lote_zona', 'Sin especificar')
+
                         responsables_dict[clave_responsable] = {
-                            'nombre': datos.get('nombre_responsable', '').strip(),
-                            'telefono': datos.get('telefono', '').strip(),
-                            'finca': datos.get('finca', '').strip(),
-                            'zona': datos.get('zona', 'Sin especificar'),
-                            'nombre_zona': datos.get('nombre_zona', 'Sin especificar'),
-                            'lote_vacuna': datos.get('lote_vacuna', 'Sin especificar'),
+                            'nombre': str(datos.get('nombre_responsable', '')).strip(),
+                            'telefono': str(datos.get('telefono', '')).strip(),
+                            'finca': str(datos.get('finca', '')).strip(),
+                            'zona': str(datos.get('zona', 'Sin especificar')).strip(),
+                            'nombre_zona': str(datos.get('nombre_zona', 'Sin especificar')).strip(),
+                            'lote_vacuna': str(lote_vacuna).strip() if lote_vacuna else 'Sin especificar',
+                            'vacunador_id': datos.get('ID'),  # ID del vacunador
                             'mascotas': []
                         }
 
                     # Agregar mascota si hay nombre de mascota
                     if datos.get('nombre_mascota'):
+                        # Manejar variaciones del campo esterilizado (con typo "estereilizado")
+                        esterilizado_valor = datos.get('esterilizado') or datos.get('estereilizado', 'NO')
+
                         mascota_data = {
                             'nombre': str(datos.get('nombre_mascota', '')).strip(),
                             'tipo': str(datos.get('tipo_mascota', 'perro')).lower().strip(),
                             'raza': str(datos.get('raza_mascota', 'M')).strip(),
                             'color': str(datos.get('color_mascota', 'Sin especificar')).strip(),
                             'antecedente_vacunal': str(datos.get('antecedente_vacunal', 'NO')).upper().strip() in ['SI', 'SÍ', 'S', 'TRUE', '1'],
-                            'esterilizado': str(datos.get('esterilizado', 'NO')).upper().strip() in ['SI', 'SÍ', 'S', 'TRUE', '1'],
+                            'esterilizado': str(esterilizado_valor).upper().strip() in ['SI', 'SÍ', 'S', 'TRUE', '1'],
                             'latitud': None,
                             'longitud': None
                         }
@@ -1072,6 +1079,18 @@ def importar_responsables_mascotas(request):
 
                 for clave, datos_responsable in responsables_dict.items():
                     try:
+                        # Determinar el usuario que creó el responsable
+                        usuario_creador = request.user
+                        vacunador_id = datos_responsable.get('vacunador_id')
+
+                        if vacunador_id:
+                            try:
+                                # Intentar obtener el vacunador por su ID
+                                usuario_creador = Veterinario.objects.get(id=int(vacunador_id))
+                            except (Veterinario.DoesNotExist, ValueError, TypeError):
+                                # Si no se encuentra, usar el usuario de la sesión
+                                pass
+
                         # Crear responsable
                         responsable = Responsable.objects.create(
                             nombre=datos_responsable['nombre'],
@@ -1081,7 +1100,7 @@ def importar_responsables_mascotas(request):
                             nombre_zona=datos_responsable['nombre_zona'],
                             lote_vacuna=datos_responsable['lote_vacuna'],
                             planilla=planilla,
-                            created_by=request.user
+                            created_by=usuario_creador
                         )
                         responsables_creados += 1
 
@@ -1097,7 +1116,7 @@ def importar_responsables_mascotas(request):
                                 latitud=mascota_data['latitud'],
                                 longitud=mascota_data['longitud'],
                                 responsable=responsable,
-                                created_by=request.user
+                                created_by=usuario_creador
                             )
                             mascotas_creadas += 1
 
@@ -1135,32 +1154,39 @@ def importar_responsables_mascotas(request):
 
                     # Crear clave única para el responsable
                     clave_responsable = (
-                        row.get('nombre_responsable', '').strip(),
-                        row.get('telefono', '').strip(),
-                        row.get('finca', '').strip()
+                        str(row.get('nombre_responsable', '')).strip(),
+                        str(row.get('telefono', '')).strip(),
+                        str(row.get('finca', '')).strip()
                     )
 
                     # Si el responsable no existe, agregarlo
                     if clave_responsable not in responsables_dict:
+                        # Intentar obtener lote_vacuna de diferentes columnas posibles
+                        lote_vacuna = row.get('lote_vacuna') or row.get('lote_zona', 'Sin especificar')
+
                         responsables_dict[clave_responsable] = {
-                            'nombre': row.get('nombre_responsable', '').strip(),
-                            'telefono': row.get('telefono', '').strip(),
-                            'finca': row.get('finca', '').strip(),
-                            'zona': row.get('zona', 'Sin especificar'),
-                            'nombre_zona': row.get('nombre_zona', 'Sin especificar'),
-                            'lote_vacuna': row.get('lote_vacuna', 'Sin especificar'),
+                            'nombre': str(row.get('nombre_responsable', '')).strip(),
+                            'telefono': str(row.get('telefono', '')).strip(),
+                            'finca': str(row.get('finca', '')).strip(),
+                            'zona': str(row.get('zona', 'Sin especificar')).strip(),
+                            'nombre_zona': str(row.get('nombre_zona', 'Sin especificar')).strip(),
+                            'lote_vacuna': str(lote_vacuna).strip() if lote_vacuna else 'Sin especificar',
+                            'vacunador_id': row.get('ID'),  # ID del vacunador
                             'mascotas': []
                         }
 
                     # Agregar mascota
                     if row.get('nombre_mascota'):
+                        # Manejar variaciones del campo esterilizado (con typo "estereilizado")
+                        esterilizado_valor = row.get('esterilizado') or row.get('estereilizado', 'NO')
+
                         mascota_data = {
-                            'nombre': row.get('nombre_mascota', '').strip(),
-                            'tipo': row.get('tipo_mascota', 'perro').lower().strip(),
-                            'raza': row.get('raza_mascota', 'M').strip(),
-                            'color': row.get('color_mascota', 'Sin especificar').strip(),
-                            'antecedente_vacunal': row.get('antecedente_vacunal', 'NO').upper().strip() in ['SI', 'SÍ', 'S', 'TRUE', '1'],
-                            'esterilizado': row.get('esterilizado', 'NO').upper().strip() in ['SI', 'SÍ', 'S', 'TRUE', '1'],
+                            'nombre': str(row.get('nombre_mascota', '')).strip(),
+                            'tipo': str(row.get('tipo_mascota', 'perro')).lower().strip(),
+                            'raza': str(row.get('raza_mascota', 'M')).strip(),
+                            'color': str(row.get('color_mascota', 'Sin especificar')).strip(),
+                            'antecedente_vacunal': str(row.get('antecedente_vacunal', 'NO')).upper().strip() in ['SI', 'SÍ', 'S', 'TRUE', '1'],
+                            'esterilizado': str(esterilizado_valor).upper().strip() in ['SI', 'SÍ', 'S', 'TRUE', '1'],
                             'latitud': None,
                             'longitud': None
                         }
@@ -1168,13 +1194,13 @@ def importar_responsables_mascotas(request):
                         # Procesar coordenadas
                         try:
                             if row.get('latitud'):
-                                mascota_data['latitud'] = Decimal(row.get('latitud'))
+                                mascota_data['latitud'] = Decimal(str(row.get('latitud')))
                         except (InvalidOperation, ValueError):
                             errores.append(f"Línea {linea}: Latitud inválida")
 
                         try:
                             if row.get('longitud'):
-                                mascota_data['longitud'] = Decimal(row.get('longitud'))
+                                mascota_data['longitud'] = Decimal(str(row.get('longitud')))
                         except (InvalidOperation, ValueError):
                             errores.append(f"Línea {linea}: Longitud inválida")
 
@@ -1186,6 +1212,18 @@ def importar_responsables_mascotas(request):
 
                 for clave, datos_responsable in responsables_dict.items():
                     try:
+                        # Determinar el usuario que creó el responsable
+                        usuario_creador = request.user
+                        vacunador_id = datos_responsable.get('vacunador_id')
+
+                        if vacunador_id:
+                            try:
+                                # Intentar obtener el vacunador por su ID
+                                usuario_creador = Veterinario.objects.get(id=int(vacunador_id))
+                            except (Veterinario.DoesNotExist, ValueError, TypeError):
+                                # Si no se encuentra, usar el usuario de la sesión
+                                pass
+
                         responsable = Responsable.objects.create(
                             nombre=datos_responsable['nombre'],
                             telefono=datos_responsable['telefono'],
@@ -1194,7 +1232,7 @@ def importar_responsables_mascotas(request):
                             nombre_zona=datos_responsable['nombre_zona'],
                             lote_vacuna=datos_responsable['lote_vacuna'],
                             planilla=planilla,
-                            created_by=request.user
+                            created_by=usuario_creador
                         )
                         responsables_creados += 1
 
@@ -1209,7 +1247,7 @@ def importar_responsables_mascotas(request):
                                 latitud=mascota_data['latitud'],
                                 longitud=mascota_data['longitud'],
                                 responsable=responsable,
-                                created_by=request.user
+                                created_by=usuario_creador
                             )
                             mascotas_creadas += 1
 

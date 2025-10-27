@@ -11,3 +11,4 @@ PyJWT
 sqlparse
 typing-extensions
 reportlab
+openpyxl
