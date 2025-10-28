@@ -1767,6 +1767,8 @@ def arbol_reportes(request):
                         'telefono': mascotas_list[0]['responsable']['telefono'] if mascotas_list else '',
                         'finca': mascotas_list[0]['responsable']['finca'] if mascotas_list else '',
                         'zona': mascotas_list[0]['responsable']['zona'] if mascotas_list else '',
+                        'nombre_zona': mascotas_list[0]['responsable']['nombre_zona'] if mascotas_list else '',
+                        'lote_vacuna': mascotas_list[0]['responsable']['lote_vacuna'] if mascotas_list else '',
                         'total_mascotas': responsable_mascotas,
                         'total_perros': responsable_perros,
                         'total_gatos': responsable_gatos,
