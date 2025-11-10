@@ -330,130 +330,139 @@ def landing_page(request):
     return render(request, 'api/landing.html', context)
 
 
+from collections import defaultdict
+
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+from django.shortcuts import render
+
+from .models import Planilla
+
+
 @login_required
 def reportes_view(request):
     """Vista para reportes detallados por municipio - filtrada por rol de usuario"""
     user = request.user
-    
-    # Filtrar planillas según el rol del usuario
-    if user.tipo_usuario == 'administrador':
+
+    is_admin = user.tipo_usuario == 'administrador'
+    is_tecnico = user.tipo_usuario == 'tecnico'
+    is_vacunador = user.tipo_usuario == 'vacunador'
+
+    # --- Filtrar planillas según el rol del usuario ---
+    if is_admin:
         # Administradores ven todas las planillas
-        planillas = Planilla.objects.select_related().prefetch_related('responsables__mascotas')
-    elif user.tipo_usuario == 'tecnico':
+        planillas = (
+            Planilla.objects
+            .prefetch_related('responsables__mascotas')
+        )
+    elif is_tecnico:
         # Técnicos ven solo las planillas de sus municipios asignados
-        planillas = Planilla.objects.filter(
-            Q(tecnico_asignado=user) |
-            Q(tecnicos_adicionales=user)
-        ).select_related().prefetch_related('responsables__mascotas').distinct()
-    elif user.tipo_usuario == 'vacunador':
+        planillas = (
+            Planilla.objects
+            .filter(Q(tecnico_asignado=user) | Q(tecnicos_adicionales=user))
+            .prefetch_related('responsables__mascotas')
+            .distinct()
+        )
+    elif is_vacunador:
         # Vacunadores ven solo sus planillas asignadas
-        planillas = Planilla.objects.filter(
-            Q(assigned_to=user) |
-            Q(vacunadores_adicionales=user)
-        ).select_related().prefetch_related('responsables__mascotas').distinct()
+        planillas = (
+            Planilla.objects
+            .filter(Q(assigned_to=user) | Q(vacunadores_adicionales=user))
+            .prefetch_related('responsables__mascotas')
+            .distinct()
+        )
     else:
         planillas = Planilla.objects.none()
-    
-    # Diccionario para agrupar por municipio
-    municipios_stats = {}
-    
+
+    # --- Agregación por municipio ---
+    municipios_stats = defaultdict(lambda: {
+        'municipio': '',
+        'total_mascotas': 0,
+        'con_tarjeta_previa': 0,
+        'sin_tarjeta_previa': 0,
+        'zona_urbana': 0,
+        'zona_rural': 0,
+        'perros': 0,
+        'gatos': 0,
+        'responsables': 0,
+        'planillas': 0,
+    })
+
     for planilla in planillas:
         municipio = planilla.municipio
-        if municipio not in municipios_stats:
-            municipios_stats[municipio] = {
-                'municipio': municipio,
-                'total_mascotas': 0,
-                'con_tarjeta_previa': 0,
-                'sin_tarjeta_previa': 0,
-                'zona_urbana': 0,
-                'zona_rural': 0,
-                'perros': 0,
-                'gatos': 0,
-                'responsables': 0,
-                'planillas': 0,
-            }
-        
-        # Contar planillas por municipio
-        municipios_stats[municipio]['planillas'] += 1
-        
-        # Contar responsables y mascotas por planilla
-        # Filtrar responsables según el rol del usuario
-        if user.tipo_usuario == 'vacunador':
-            # Vacunadores solo ven sus propios registros
-            responsables = planilla.responsables.filter(created_by=user)
+        stats = municipios_stats[municipio]
+        stats['municipio'] = municipio
+        stats['planillas'] += 1
+
+        # Responsables según rol
+        if is_vacunador:
+            responsables_qs = planilla.responsables.filter(created_by=user)
         else:
-            # Técnicos y administradores ven todos los registros de la planilla
-            responsables = planilla.responsables.all()
-            
-        for responsable in responsables:
-            municipios_stats[municipio]['responsables'] += 1
-            
-            # Filtrar mascotas según el rol del usuario
-            if user.tipo_usuario == 'vacunador':
-                mascotas = responsable.mascotas.filter(created_by=user)
+            responsables_qs = planilla.responsables.all()
+
+        for responsable in responsables_qs:
+            stats['responsables'] += 1
+
+            # Mascotas según rol
+            if is_vacunador:
+                mascotas_qs = responsable.mascotas.filter(created_by=user)
             else:
-                mascotas = responsable.mascotas.all()
-            
-            for mascota in mascotas:
-                municipios_stats[municipio]['total_mascotas'] += 1
-                
-                # Contar por tarjeta de vacunación previa (todos son vacunados ahora)
+                mascotas_qs = responsable.mascotas.all()
+
+            for mascota in mascotas_qs:
+                stats['total_mascotas'] += 1
+
+                # Tarjeta previa
                 if mascota.antecedente_vacunal:
-                    municipios_stats[municipio]['con_tarjeta_previa'] += 1
+                    stats['con_tarjeta_previa'] += 1
                 else:
-                    municipios_stats[municipio]['sin_tarjeta_previa'] += 1
-                
-                # Contar por zona (basado en la zona del responsable)
-                # Mapear zona del responsable a urbano/rural
+                    stats['sin_tarjeta_previa'] += 1
+
+                # Zona (responsable / fallback planilla)
                 if responsable.zona == 'barrio':
-                    municipios_stats[municipio]['zona_urbana'] += 1
+                    stats['zona_urbana'] += 1
                 elif responsable.zona == 'vereda':
-                    municipios_stats[municipio]['zona_rural'] += 1
+                    stats['zona_rural'] += 1
                 elif responsable.zona == 'centro poblado':
-                    # Centro poblado puede ser urbano o rural, por defecto urbano
-                    municipios_stats[municipio]['zona_urbana'] += 1
+                    stats['zona_urbana'] += 1
                 else:
-                    # Fallback: usar el valor de la planilla si la zona del responsable no está definida
                     if planilla.urbano_rural == 'urbano':
-                        municipios_stats[municipio]['zona_urbana'] += 1
+                        stats['zona_urbano'] += 1
                     else:
-                        municipios_stats[municipio]['zona_rural'] += 1
-                
-                # Contar por tipo
+                        stats['zona_rural'] += 1
+
+                # Tipo de mascota
                 if mascota.tipo == 'perro':
-                    municipios_stats[municipio]['perros'] += 1
+                    stats['perros'] += 1
                 else:
-                    municipios_stats[municipio]['gatos'] += 1
-    
-    # Calcular porcentajes de tarjetas previas
+                    stats['gatos'] += 1
+
+    # --- Lista de reportes por municipio (con porcentaje por municipio) ---
     reportes_municipio = []
     for stats in municipios_stats.values():
-        if stats['total_mascotas'] > 0:
-            porcentaje_tarjeta_previa = round((stats['con_tarjeta_previa'] / stats['total_mascotas']) * 100, 1)
+        total_masc = stats['total_mascotas']
+        if total_masc > 0:
+            stats['porcentaje_tarjeta_previa'] = round(
+                stats['con_tarjeta_previa'] * 100 / total_masc, 1
+            )
         else:
-            porcentaje_tarjeta_previa = 0
-        
-        stats['porcentaje_tarjeta_previa'] = porcentaje_tarjeta_previa
+            stats['porcentaje_tarjeta_previa'] = 0.0
+
         reportes_municipio.append(stats)
-    
-    # Ordenar por municipio
+
     reportes_municipio.sort(key=lambda x: x['municipio'])
-    
-    # Para administradores, generar datos detallados por municipio
-    reportes_detallados_municipio = {}
-    if user.tipo_usuario == 'administrador':
+
+    # --- Datos detallados por municipio (solo administrador) ---
+    reportes_detallados_municipio = []
+    if is_admin:
+        tmp_detalle = defaultdict(lambda: {'municipio': '', 'responsables': []})
+
         for planilla in planillas:
             municipio = planilla.municipio
-            if municipio not in reportes_detallados_municipio:
-                reportes_detallados_municipio[municipio] = {
-                    'municipio': municipio,
-                    'responsables': []
-                }
-            
-            # Obtener todos los responsables de esta planilla
-            responsables = planilla.responsables.all()
-            for responsable in responsables:
-                mascotas = responsable.mascotas.all()
+            detalle = tmp_detalle[municipio]
+            detalle['municipio'] = municipio
+
+            for responsable in planilla.responsables.all():
                 responsable_data = {
                     'nombre': responsable.nombre,
                     'telefono': responsable.telefono,
@@ -462,57 +471,60 @@ def reportes_view(request):
                     'nombre_zona': responsable.nombre_zona,
                     'lote_vacuna': responsable.lote_vacuna,
                     'creado': responsable.creado,
-                    'created_by': responsable.created_by.username if responsable.created_by else 'N/A',
-                    'mascotas': []
+                    'created_by': (
+                        responsable.created_by.username
+                        if responsable.created_by else 'N/A'
+                    ),
+                    'mascotas': [],
                 }
-                
-                for mascota in mascotas:
-                    mascota_data = {
+
+                for mascota in responsable.mascotas.all():
+                    responsable_data['mascotas'].append({
                         'nombre': mascota.nombre,
                         'tipo': mascota.tipo,
                         'raza': mascota.raza,
                         'color': mascota.color,
                         'antecedente_vacunal': mascota.antecedente_vacunal,
                         'creado': mascota.creado,
-                        'created_by': mascota.created_by.username if mascota.created_by else 'N/A',
-                    }
-                    responsable_data['mascotas'].append(mascota_data)
-                
-                reportes_detallados_municipio[municipio]['responsables'].append(responsable_data)
-        
-        # Convertir a lista y ordenar
-        reportes_detallados_municipio = list(reportes_detallados_municipio.values())
+                        'created_by': (
+                            mascota.created_by.username
+                            if mascota.created_by else 'N/A'
+                        ),
+                    })
+
+                detalle['responsables'].append(responsable_data)
+
+        reportes_detallados_municipio = list(tmp_detalle.values())
         reportes_detallados_municipio.sort(key=lambda x: x['municipio'])
-    
-    # Calcular estadísticas generales
+
+    # --- Estadísticas generales (a partir de municipios_stats) ---
     total_municipios = len(municipios_stats)
-    total_planillas = sum(stats['planillas'] for stats in municipios_stats.values())
-    total_responsables = sum(stats['responsables'] for stats in municipios_stats.values())
-    total_mascotas = sum(stats['total_mascotas'] for stats in municipios_stats.values())
-    total_con_tarjeta = sum(stats['con_tarjeta_previa'] for stats in municipios_stats.values())
-    total_sin_tarjeta = sum(stats['sin_tarjeta_previa'] for stats in municipios_stats.values())
-    total_urbano = sum(stats['zona_urbana'] for stats in municipios_stats.values())
-    total_rural = sum(stats['zona_rural'] for stats in municipios_stats.values())
-    total_perros = sum(stats['perros'] for stats in municipios_stats.values())
-    total_gatos = sum(stats['gatos'] for stats in municipios_stats.values())
-    
-    # Calcular porcentajes generales
+    total_planillas = sum(s['planillas'] for s in municipios_stats.values())
+    total_responsables = sum(s['responsables'] for s in municipios_stats.values())
+    total_mascotas = sum(s['total_mascotas'] for s in municipios_stats.values())
+    total_con_tarjeta = sum(s['con_tarjeta_previa'] for s in municipios_stats.values())
+    total_sin_tarjeta = sum(s['sin_tarjeta_previa'] for s in municipios_stats.values())
+    total_urbano = sum(s['zona_urbana'] for s in municipios_stats.values())
+    total_rural = sum(s['zona_rural'] for s in municipios_stats.values())
+    total_perros = sum(s['perros'] for s in municipios_stats.values())
+    total_gatos = sum(s['gatos'] for s in municipios_stats.values())
+
     if total_mascotas > 0:
-        porcentaje_general_tarjeta = round((total_con_tarjeta / total_mascotas) * 100, 1)
-        porcentaje_urbano = round((total_urbano / total_mascotas) * 100, 1)
-        porcentaje_rural = round((total_rural / total_mascotas) * 100, 1)
-        porcentaje_perros = round((total_perros / total_mascotas) * 100, 1)
-        porcentaje_gatos = round((total_gatos / total_mascotas) * 100, 1)
+        porcentaje_general_tarjeta = round(total_con_tarjeta * 100 / total_mascotas, 1)
+        porcentaje_urbano = round(total_urbano * 100 / total_mascotas, 1)
+        porcentaje_rural = round(total_rural * 100 / total_mascotas, 1)
+        porcentaje_perros = round(total_perros * 100 / total_mascotas, 1)
+        porcentaje_gatos = round(total_gatos * 100 / total_mascotas, 1)
     else:
         porcentaje_general_tarjeta = 0
         porcentaje_urbano = 0
         porcentaje_rural = 0
         porcentaje_perros = 0
         porcentaje_gatos = 0
-    
+
     context = {
         'reportes_municipio': reportes_municipio,
-        'reportes_detallados_municipio': reportes_detallados_municipio if user.tipo_usuario == 'administrador' else [],
+        'reportes_detallados_municipio': reportes_detallados_municipio if is_admin else [],
         'total_municipios': total_municipios,
         'total_planillas': total_planillas,
         'total_responsables': total_responsables,
@@ -524,12 +536,14 @@ def reportes_view(request):
         'total_perros': total_perros,
         'total_gatos': total_gatos,
         'porcentaje_general_tarjeta': porcentaje_general_tarjeta,
+        # alias para coincidir con el HTML de métricas clave
+        'porcentaje_tarjeta_previa': porcentaje_general_tarjeta,
         'porcentaje_urbano': porcentaje_urbano,
         'porcentaje_rural': porcentaje_rural,
         'porcentaje_perros': porcentaje_perros,
         'porcentaje_gatos': porcentaje_gatos,
     }
-    
+
     return render(request, 'api/reportes.html', context)
 
 
