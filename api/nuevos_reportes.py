@@ -72,6 +72,9 @@ def reporte_municipio_por_dia_pdf(request):
     elements.append(title)
     elements.append(Spacer(1, 0.3*inch))
 
+    # Diccionario para totales estadísticos por municipio
+    estadisticas_por_municipio = {}
+
     # Procesar cada municipio
     for municipio in sorted(data_por_municipio.keys()):
         # Subtítulo del municipio
@@ -80,62 +83,165 @@ def reporte_municipio_por_dia_pdf(request):
         elements.append(Spacer(1, 0.1*inch))
 
         dias = data_por_municipio[municipio]
-        total_municipio = 0
+
+        # Tabla para este municipio - organizada por días
+        table_data_mun = [[
+            'Fecha',
+            'Perros\nUrbano',
+            'Perros\nRural',
+            'Total\nPerros',
+            'Gatos\nUrbano',
+            'Gatos\nRural',
+            'Total\nGatos',
+            'Total\nUrbano',
+            'Total\nRural',
+            'TOTAL'
+        ]]
+
+        # Inicializar contadores para este municipio
+        stats = {
+            'perros_urbano': 0, 'perros_rural': 0,
+            'gatos_urbano': 0, 'gatos_rural': 0
+        }
 
         for fecha in sorted(dias.keys()):
             mascotas_dia = dias[fecha]
-            total_municipio += len(mascotas_dia)
 
-            # Encabezado de día
-            dia_texto = Paragraph(f"<i>Fecha: {fecha.strftime('%d/%m/%Y')}</i>", styles['Normal'])
-            elements.append(dia_texto)
-            elements.append(Spacer(1, 0.05*inch))
+            # Contadores para este día
+            stats_dia = {
+                'perros_urbano': 0, 'perros_rural': 0,
+                'gatos_urbano': 0, 'gatos_rural': 0
+            }
 
-            # Tabla de mascotas
-            table_data = [['#', 'Responsable', 'Mascota', 'Tipo', 'Raza', 'Color', 'Zona', 'Vacunador']]
-
-            for idx, mascota in enumerate(mascotas_dia, 1):
+            for mascota in mascotas_dia:
                 resp = mascota.responsable
-                zona_text = resp.zona or 'N/A'
-                table_data.append([
-                    str(idx),
-                    resp.nombre[:20],
-                    mascota.nombre[:15],
-                    'P' if mascota.tipo == 'perro' else 'G',
-                    mascota.raza[:15] if mascota.raza else 'N/A',
-                    mascota.color[:10] if mascota.color else 'N/A',
-                    zona_text[:15],
-                    mascota.created_by.username[:12] if mascota.created_by else 'N/A'
-                ])
 
-            table = Table(table_data, colWidths=[0.4*inch, 1.2*inch, 1*inch, 0.5*inch, 1*inch, 0.8*inch, 1*inch, 0.8*inch])
-            table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4a90e2')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 9),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('FONTSIZE', (0, 1), (-1, -1), 7),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
-            ]))
+                # Contabilizar para estadísticas
+                zona = (resp.zona or '').lower().strip()
+                es_urbano = zona == 'barrio'
+                es_rural = zona in ['vereda', 'centro poblado']
 
-            elements.append(table)
-            elements.append(Spacer(1, 0.15*inch))
+                if mascota.tipo == 'perro':
+                    if es_urbano:
+                        stats_dia['perros_urbano'] += 1
+                        stats['perros_urbano'] += 1
+                    elif es_rural:
+                        stats_dia['perros_rural'] += 1
+                        stats['perros_rural'] += 1
+                elif mascota.tipo == 'gato':
+                    if es_urbano:
+                        stats_dia['gatos_urbano'] += 1
+                        stats['gatos_urbano'] += 1
+                    elif es_rural:
+                        stats_dia['gatos_rural'] += 1
+                        stats['gatos_rural'] += 1
 
-        # Total del municipio
-        total_text = Paragraph(f"<b>Total {municipio}: {total_municipio} mascotas</b>", subtitle_style)
-        elements.append(total_text)
-        elements.append(Spacer(1, 0.2*inch))
-        elements.append(PageBreak())
+            # Agregar fila para este día
+            total_perros_dia = stats_dia['perros_urbano'] + stats_dia['perros_rural']
+            total_gatos_dia = stats_dia['gatos_urbano'] + stats_dia['gatos_rural']
+            total_urbano_dia = stats_dia['perros_urbano'] + stats_dia['gatos_urbano']
+            total_rural_dia = stats_dia['perros_rural'] + stats_dia['gatos_rural']
+            total_dia = total_perros_dia + total_gatos_dia
 
-    # Total general
-    total_general = sum(len(dias_data) for municipio_data in data_por_municipio.values()
-                       for dias_data in municipio_data.values())
-    total_final = Paragraph(f"<b>TOTAL GENERAL: {total_general} mascotas vacunadas</b>", title_style)
-    elements.append(total_final)
+            table_data_mun.append([
+                fecha.strftime('%d/%m/%Y'),
+                str(stats_dia['perros_urbano']),
+                str(stats_dia['perros_rural']),
+                str(total_perros_dia),
+                str(stats_dia['gatos_urbano']),
+                str(stats_dia['gatos_rural']),
+                str(total_gatos_dia),
+                str(total_urbano_dia),
+                str(total_rural_dia),
+                str(total_dia)
+            ])
+
+        # Agregar subtotal del municipio
+        total_perros = stats['perros_urbano'] + stats['perros_rural']
+        total_gatos = stats['gatos_urbano'] + stats['gatos_rural']
+        total_urbano = stats['perros_urbano'] + stats['gatos_urbano']
+        total_rural = stats['perros_rural'] + stats['gatos_rural']
+        total_general = total_perros + total_gatos
+
+        table_data_mun.append([
+            f'SUBTOTAL {municipio}',
+            str(stats['perros_urbano']),
+            str(stats['perros_rural']),
+            str(total_perros),
+            str(stats['gatos_urbano']),
+            str(stats['gatos_rural']),
+            str(total_gatos),
+            str(total_urbano),
+            str(total_rural),
+            str(total_general)
+        ])
+
+        # Crear tabla para este municipio
+        table = Table(table_data_mun, colWidths=[1.5*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.7*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4a90e2')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -2), colors.beige),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#90EE90')),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.lightgrey])
+        ]))
+
+        elements.append(table)
+        elements.append(Spacer(1, 0.3*inch))
+
+        # Guardar estadísticas del municipio
+        estadisticas_por_municipio[municipio] = stats
+
+    # TOTALES GENERALES
+    elements.append(PageBreak())
+    elements.append(Paragraph("<b>TOTALES GENERALES</b>", title_style))
+    elements.append(Spacer(1, 0.2*inch))
+
+    totales = {
+        'perros_urbano': 0, 'perros_rural': 0,
+        'gatos_urbano': 0, 'gatos_rural': 0
+    }
+
+    for stats in estadisticas_por_municipio.values():
+        totales['perros_urbano'] += stats['perros_urbano']
+        totales['perros_rural'] += stats['perros_rural']
+        totales['gatos_urbano'] += stats['gatos_urbano']
+        totales['gatos_rural'] += stats['gatos_rural']
+
+    total_perros_final = totales['perros_urbano'] + totales['perros_rural']
+    total_gatos_final = totales['gatos_urbano'] + totales['gatos_rural']
+    total_urbano_final = totales['perros_urbano'] + totales['gatos_urbano']
+    total_rural_final = totales['perros_rural'] + totales['gatos_rural']
+    total_final = total_perros_final + total_gatos_final
+
+    totales_table_data = [
+        ['Perros Urbano', 'Perros Rural', 'Total Perros', 'Gatos Urbano', 'Gatos Rural', 'Total Gatos', 'Total Urbano', 'Total Rural', 'TOTAL'],
+        [str(totales['perros_urbano']), str(totales['perros_rural']), str(total_perros_final),
+         str(totales['gatos_urbano']), str(totales['gatos_rural']), str(total_gatos_final),
+         str(total_urbano_final), str(total_rural_final), str(total_final)]
+    ]
+
+    totales_table = Table(totales_table_data, colWidths=[0.9*inch] * 9)
+    totales_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e74c3c')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#ffd700')),
+        ('GRID', (0, 0), (-1, -1), 2, colors.black),
+        ('FONTSIZE', (0, 1), (-1, -1), 11),
+    ]))
+
+    elements.append(totales_table)
 
     # Construir PDF
     doc.build(elements)
@@ -202,6 +308,9 @@ def reporte_dia_por_municipio_pdf(request):
     elements.append(title)
     elements.append(Spacer(1, 0.3*inch))
 
+    # Diccionario para totales estadísticos por día
+    estadisticas_por_dia = {}
+
     # Procesar cada día
     for fecha in sorted(data_por_dia.keys()):
         # Subtítulo del día
@@ -210,62 +319,165 @@ def reporte_dia_por_municipio_pdf(request):
         elements.append(Spacer(1, 0.1*inch))
 
         municipios = data_por_dia[fecha]
-        total_dia = 0
+
+        # Tabla para este día - organizada por municipios
+        table_data_dia = [[
+            'Municipio',
+            'Perros\nUrbano',
+            'Perros\nRural',
+            'Total\nPerros',
+            'Gatos\nUrbano',
+            'Gatos\nRural',
+            'Total\nGatos',
+            'Total\nUrbano',
+            'Total\nRural',
+            'TOTAL'
+        ]]
+
+        # Inicializar contadores para este día
+        stats = {
+            'perros_urbano': 0, 'perros_rural': 0,
+            'gatos_urbano': 0, 'gatos_rural': 0
+        }
 
         for municipio in sorted(municipios.keys()):
             mascotas_municipio = municipios[municipio]
-            total_dia += len(mascotas_municipio)
 
-            # Encabezado de municipio
-            municipio_texto = Paragraph(f"<i>Municipio: {municipio}</i>", styles['Normal'])
-            elements.append(municipio_texto)
-            elements.append(Spacer(1, 0.05*inch))
+            # Contadores para este municipio en este día
+            stats_mun = {
+                'perros_urbano': 0, 'perros_rural': 0,
+                'gatos_urbano': 0, 'gatos_rural': 0
+            }
 
-            # Tabla de mascotas
-            table_data = [['#', 'Responsable', 'Mascota', 'Tipo', 'Raza', 'Color', 'Zona', 'Vacunador']]
-
-            for idx, mascota in enumerate(mascotas_municipio, 1):
+            for mascota in mascotas_municipio:
                 resp = mascota.responsable
-                zona_text = resp.zona or 'N/A'
-                table_data.append([
-                    str(idx),
-                    resp.nombre[:20],
-                    mascota.nombre[:15],
-                    'P' if mascota.tipo == 'perro' else 'G',
-                    mascota.raza[:15] if mascota.raza else 'N/A',
-                    mascota.color[:10] if mascota.color else 'N/A',
-                    zona_text[:15],
-                    mascota.created_by.username[:12] if mascota.created_by else 'N/A'
-                ])
 
-            table = Table(table_data, colWidths=[0.4*inch, 1.2*inch, 1*inch, 0.5*inch, 1*inch, 0.8*inch, 1*inch, 0.8*inch])
-            table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4a90e2')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 9),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('FONTSIZE', (0, 1), (-1, -1), 7),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
-            ]))
+                # Contabilizar para estadísticas
+                zona = (resp.zona or '').lower().strip()
+                es_urbano = zona == 'barrio'
+                es_rural = zona in ['vereda', 'centro poblado']
 
-            elements.append(table)
-            elements.append(Spacer(1, 0.15*inch))
+                if mascota.tipo == 'perro':
+                    if es_urbano:
+                        stats_mun['perros_urbano'] += 1
+                        stats['perros_urbano'] += 1
+                    elif es_rural:
+                        stats_mun['perros_rural'] += 1
+                        stats['perros_rural'] += 1
+                elif mascota.tipo == 'gato':
+                    if es_urbano:
+                        stats_mun['gatos_urbano'] += 1
+                        stats['gatos_urbano'] += 1
+                    elif es_rural:
+                        stats_mun['gatos_rural'] += 1
+                        stats['gatos_rural'] += 1
 
-        # Total del día
-        total_text = Paragraph(f"<b>Total {fecha.strftime('%d/%m/%Y')}: {total_dia} mascotas</b>", subtitle_style)
-        elements.append(total_text)
-        elements.append(Spacer(1, 0.2*inch))
-        elements.append(PageBreak())
+            # Agregar fila para este municipio
+            total_perros_mun = stats_mun['perros_urbano'] + stats_mun['perros_rural']
+            total_gatos_mun = stats_mun['gatos_urbano'] + stats_mun['gatos_rural']
+            total_urbano_mun = stats_mun['perros_urbano'] + stats_mun['gatos_urbano']
+            total_rural_mun = stats_mun['perros_rural'] + stats_mun['gatos_rural']
+            total_mun = total_perros_mun + total_gatos_mun
 
-    # Total general
-    total_general = sum(len(municipios_data) for dia_data in data_por_dia.values()
-                       for municipios_data in dia_data.values())
-    total_final = Paragraph(f"<b>TOTAL GENERAL: {total_general} mascotas vacunadas</b>", title_style)
-    elements.append(total_final)
+            table_data_dia.append([
+                municipio,
+                str(stats_mun['perros_urbano']),
+                str(stats_mun['perros_rural']),
+                str(total_perros_mun),
+                str(stats_mun['gatos_urbano']),
+                str(stats_mun['gatos_rural']),
+                str(total_gatos_mun),
+                str(total_urbano_mun),
+                str(total_rural_mun),
+                str(total_mun)
+            ])
+
+        # Agregar subtotal del día
+        total_perros = stats['perros_urbano'] + stats['perros_rural']
+        total_gatos = stats['gatos_urbano'] + stats['gatos_rural']
+        total_urbano = stats['perros_urbano'] + stats['gatos_urbano']
+        total_rural = stats['perros_rural'] + stats['gatos_rural']
+        total_general = total_perros + total_gatos
+
+        table_data_dia.append([
+            f'SUBTOTAL {fecha.strftime("%d/%m/%Y")}',
+            str(stats['perros_urbano']),
+            str(stats['perros_rural']),
+            str(total_perros),
+            str(stats['gatos_urbano']),
+            str(stats['gatos_rural']),
+            str(total_gatos),
+            str(total_urbano),
+            str(total_rural),
+            str(total_general)
+        ])
+
+        # Crear tabla para este día
+        table = Table(table_data_dia, colWidths=[1.5*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.7*inch, 0.7*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4a90e2')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -2), colors.beige),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#90EE90')),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.lightgrey])
+        ]))
+
+        elements.append(table)
+        elements.append(Spacer(1, 0.3*inch))
+
+        # Guardar estadísticas del día
+        estadisticas_por_dia[fecha] = stats
+
+    # TOTALES GENERALES
+    elements.append(PageBreak())
+    elements.append(Paragraph("<b>TOTALES GENERALES</b>", title_style))
+    elements.append(Spacer(1, 0.2*inch))
+
+    totales = {
+        'perros_urbano': 0, 'perros_rural': 0,
+        'gatos_urbano': 0, 'gatos_rural': 0
+    }
+
+    for stats in estadisticas_por_dia.values():
+        totales['perros_urbano'] += stats['perros_urbano']
+        totales['perros_rural'] += stats['perros_rural']
+        totales['gatos_urbano'] += stats['gatos_urbano']
+        totales['gatos_rural'] += stats['gatos_rural']
+
+    total_perros_final = totales['perros_urbano'] + totales['perros_rural']
+    total_gatos_final = totales['gatos_urbano'] + totales['gatos_rural']
+    total_urbano_final = totales['perros_urbano'] + totales['gatos_urbano']
+    total_rural_final = totales['perros_rural'] + totales['gatos_rural']
+    total_final = total_perros_final + total_gatos_final
+
+    totales_table_data = [
+        ['Perros Urbano', 'Perros Rural', 'Total Perros', 'Gatos Urbano', 'Gatos Rural', 'Total Gatos', 'Total Urbano', 'Total Rural', 'TOTAL'],
+        [str(totales['perros_urbano']), str(totales['perros_rural']), str(total_perros_final),
+         str(totales['gatos_urbano']), str(totales['gatos_rural']), str(total_gatos_final),
+         str(total_urbano_final), str(total_rural_final), str(total_final)]
+    ]
+
+    totales_table = Table(totales_table_data, colWidths=[0.9*inch] * 9)
+    totales_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e74c3c')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#ffd700')),
+        ('GRID', (0, 0), (-1, -1), 2, colors.black),
+        ('FONTSIZE', (0, 1), (-1, -1), 11),
+    ]))
+
+    elements.append(totales_table)
 
     # Construir PDF
     doc.build(elements)
@@ -298,23 +510,43 @@ def reporte_estadistico_rango_fechas_pdf(request):
         if fecha_inicio_str:
             fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
         else:
-            fecha_inicio = date(2000, 1, 1)
+            fecha_inicio = None
 
         if fecha_fin_str:
             fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
         else:
-            fecha_fin = date.today()
+            fecha_fin = None
     except ValueError:
         messages.error(request, 'Formato de fecha inválido. Use AAAA-MM-DD')
         return redirect('dashboard_administrador')
 
-    # Filtrar mascotas por rango de fechas
-    mascotas = Mascota.objects.select_related(
-        'responsable__planilla'
-    ).filter(
-        creado__date__gte=fecha_inicio,
-        creado__date__lte=fecha_fin
-    )
+    # Filtrar mascotas por rango de fechas (si se especifican)
+    mascotas_query = Mascota.objects.select_related('responsable__planilla')
+
+    if fecha_inicio and fecha_fin:
+        # Si se especifican ambas fechas
+        mascotas = mascotas_query.filter(
+            creado__date__gte=fecha_inicio,
+            creado__date__lte=fecha_fin
+        )
+    elif fecha_inicio:
+        # Solo fecha de inicio
+        mascotas = mascotas_query.filter(creado__date__gte=fecha_inicio)
+        fecha_fin = date.today()
+    elif fecha_fin:
+        # Solo fecha fin
+        mascotas = mascotas_query.filter(creado__date__lte=fecha_fin)
+        # Obtener la fecha más antigua de los registros
+        primera_mascota = mascotas_query.order_by('creado').first()
+        fecha_inicio = primera_mascota.creado.date() if primera_mascota else date.today()
+    else:
+        # Sin filtro de fechas - TODOS los registros
+        mascotas = mascotas_query.all()
+        # Obtener rango completo
+        primera_mascota = mascotas_query.order_by('creado').first()
+        ultima_mascota = mascotas_query.order_by('-creado').first()
+        fecha_inicio = primera_mascota.creado.date() if primera_mascota else date.today()
+        fecha_fin = ultima_mascota.creado.date() if ultima_mascota else date.today()
 
     # Agrupar por municipio y calcular estadísticas
     stats_por_municipio = defaultdict(lambda: {
