@@ -2783,3 +2783,10 @@ def imprimir_planilla_municipio_pdf(request):
 
     return response
 
+
+# Importar nuevos reportes
+from .nuevos_reportes import (
+    reporte_municipio_por_dia_pdf,
+    reporte_dia_por_municipio_pdf,
+    reporte_estadistico_rango_fechas_pdf
+)

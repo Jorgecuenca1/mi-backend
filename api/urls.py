@@ -63,4 +63,9 @@ urlpatterns = [
 
     # URL para importación masiva de responsables y mascotas
     path('importar/responsables-mascotas/', views.importar_responsables_mascotas, name='importar_responsables_mascotas'),
+
+    # Nuevos reportes PDF
+    path('reporte/municipio-por-dia/', views.reporte_municipio_por_dia_pdf, name='reporte_municipio_por_dia'),
+    path('reporte/dia-por-municipio/', views.reporte_dia_por_municipio_pdf, name='reporte_dia_por_municipio'),
+    path('reporte/estadistico-rango/', views.reporte_estadistico_rango_fechas_pdf, name='reporte_estadistico_rango'),
 ]

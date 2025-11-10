@@ -322,6 +322,61 @@
                 📊 Reporte Estadístico
             </button>
             {% endif %}
+
+            {% if user_type == 'Administrador' %}
+            <!-- Nuevos reportes especiales para administradores -->
+            <a href="{% url 'reporte_municipio_por_dia' %}" target="_blank" style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: 10px;
+                text-decoration: none;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-weight: 600;
+                transition: transform 0.3s, box-shadow 0.3s;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102, 126, 234, 0.4)';"
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(102, 126, 234, 0.3)';">
+                📋 Municipio por Día
+            </a>
+
+            <a href="{% url 'reporte_dia_por_municipio' %}" target="_blank" style="
+                background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: 10px;
+                text-decoration: none;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-weight: 600;
+                transition: transform 0.3s, box-shadow 0.3s;
+                box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(17, 153, 142, 0.4)';"
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(17, 153, 142, 0.3)';">
+                📅 Día por Municipio
+            </a>
+
+            <button onclick="mostrarModalRangoFechas()" style="
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: 10px;
+                border: none;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-weight: 600;
+                transition: transform 0.3s, box-shadow 0.3s;
+                box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(245, 87, 108, 0.4)';"
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(245, 87, 108, 0.3)';">
+                📈 Estadístico por Fechas
+            </button>
+            {% endif %}
         </div>
 
         <div class="stats-grid">
@@ -934,6 +989,109 @@
         </div>
     </div>
 
+    <!-- Modal para Reporte Estadístico por Rango de Fechas -->
+    <div id="modalRangoFechas" style="
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.6);
+    ">
+        <div style="
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        ">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="color: #2d3748; margin: 0;">📈 Reporte Estadístico por Fechas</h2>
+                <button onclick="cerrarModalRangoFechas()" style="
+                    background: none;
+                    border: none;
+                    font-size: 2rem;
+                    cursor: pointer;
+                    color: #999;
+                    transition: color 0.3s;
+                " onmouseover="this.style.color='#333'" onmouseout="this.style.color='#999'">
+                    &times;
+                </button>
+            </div>
+
+            <p style="color: #4a5568; margin-bottom: 1.5rem;">
+                Genera un reporte estadístico detallado por municipio con totales de perros y gatos (urbano/rural) en un rango de fechas.
+            </p>
+
+            <form id="formRangoFechas">
+                <!-- Fecha Inicio -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-weight: bold; color: #2d3748; margin-bottom: 0.5rem;">
+                        Fecha Inicio:
+                    </label>
+                    <input type="date" id="fecha-inicio" style="
+                        width: 100%;
+                        padding: 0.75rem;
+                        border: 2px solid #e2e8f0;
+                        border-radius: 8px;
+                        font-size: 1rem;
+                        color: #2d3748;
+                    " required>
+                </div>
+
+                <!-- Fecha Fin -->
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; font-weight: bold; color: #2d3748; margin-bottom: 0.5rem;">
+                        Fecha Fin:
+                    </label>
+                    <input type="date" id="fecha-fin" style="
+                        width: 100%;
+                        padding: 0.75rem;
+                        border: 2px solid #e2e8f0;
+                        border-radius: 8px;
+                        font-size: 1rem;
+                        color: #2d3748;
+                    " required>
+                </div>
+
+                <!-- Botones -->
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                    <button type="button" onclick="cerrarModalRangoFechas()" style="
+                        background: #e2e8f0;
+                        color: #2d3748;
+                        padding: 0.75rem 1.5rem;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        transition: background 0.3s;
+                    " onmouseover="this.style.background='#cbd5e0'" onmouseout="this.style.background='#e2e8f0'">
+                        Cancelar
+                    </button>
+                    <button type="button" onclick="generarRangoFechasPDF()" style="
+                        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                        color: white;
+                        padding: 0.75rem 1.5rem;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        transition: transform 0.3s, box-shadow 0.3s;
+                        box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(245, 87, 108, 0.4)'"
+                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(245, 87, 108, 0.3)'">
+                        📊 Generar Reporte
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Modal para Imprimir Planilla -->
     <div id="modalPlanilla" style="
         display: none;
@@ -1206,16 +1364,54 @@
             cerrarModalEstadistico();
         }
 
+        // Funciones para modal de rango de fechas
+        function mostrarModalRangoFechas() {
+            document.getElementById('modalRangoFechas').style.display = 'block';
+        }
+
+        function cerrarModalRangoFechas() {
+            document.getElementById('modalRangoFechas').style.display = 'none';
+        }
+
+        function generarRangoFechasPDF() {
+            const fechaInicio = document.getElementById('fecha-inicio').value;
+            const fechaFin = document.getElementById('fecha-fin').value;
+
+            if (!fechaInicio || !fechaFin) {
+                alert('Por favor selecciona ambas fechas');
+                return;
+            }
+
+            if (fechaInicio > fechaFin) {
+                alert('La fecha de inicio debe ser menor o igual a la fecha fin');
+                return;
+            }
+
+            let url = '{% url "reporte_estadistico_rango" %}';
+            const params = new URLSearchParams();
+            params.append('fecha_inicio', fechaInicio);
+            params.append('fecha_fin', fechaFin);
+
+            url += '?' + params.toString();
+
+            window.open(url, '_blank');
+            cerrarModalRangoFechas();
+        }
+
         // Cerrar modales al hacer clic fuera de ellos
         window.onclick = function(event) {
             const modalPlanilla = document.getElementById('modalPlanilla');
             const modalEstadistico = document.getElementById('modalEstadistico');
+            const modalRangoFechas = document.getElementById('modalRangoFechas');
 
             if (event.target === modalPlanilla) {
                 cerrarModalPlanilla();
             }
             if (event.target === modalEstadistico) {
                 cerrarModalEstadistico();
+            }
+            if (event.target === modalRangoFechas) {
+                cerrarModalRangoFechas();
             }
         }
     </script>
