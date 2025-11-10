@@ -139,6 +139,27 @@
             border-color: rgba(255, 255, 255, 0.5);
         }
 
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(17, 153, 142, 0.4);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .btn-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+
         /* Stats */
         .stats-grid {
             display: grid;
@@ -288,6 +309,10 @@
                     {% if user.is_authenticated %}
                     <li><a href="{% url 'dashboard_principal' %}" class="btn btn-primary">Dashboard</a></li>
                     <li><a href="{% url 'elegir_planilla' %}" class="btn btn-success">Agregar Responsable</a></li>
+                    {% if user.tipo_usuario == 'administrador' %}
+                    <li><a href="{% url 'imprimir_planilla_municipio' %}" class="btn btn-info" target="_blank">📄 Imprimir Planilla</a></li>
+                    <li><a href="{% url 'reporte_estadistico_vacunacion' %}" class="btn btn-info" target="_blank">📊 Imprimir Reportes</a></li>
+                    {% endif %}
                     <li><a href="{% url 'logout' %}" class="btn btn-outline">Cerrar Sesión</a></li>
                     {% else %}
                     <li><a href="{% url 'login' %}" class="btn btn-primary">Iniciar Sesión</a></li>
