@@ -330,6 +330,7 @@ def landing_page(request):
     return render(request, 'api/landing.html', context)
 
 
+
 from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required
@@ -350,13 +351,11 @@ def reportes_view(request):
 
     # --- Filtrar planillas según el rol del usuario ---
     if is_admin:
-        # Administradores ven todas las planillas
         planillas = (
             Planilla.objects
             .prefetch_related('responsables__mascotas')
         )
     elif is_tecnico:
-        # Técnicos ven solo las planillas de sus municipios asignados
         planillas = (
             Planilla.objects
             .filter(Q(tecnico_asignado=user) | Q(tecnicos_adicionales=user))
@@ -364,7 +363,6 @@ def reportes_view(request):
             .distinct()
         )
     elif is_vacunador:
-        # Vacunadores ven solo sus planillas asignadas
         planillas = (
             Planilla.objects
             .filter(Q(assigned_to=user) | Q(vacunadores_adicionales=user))
@@ -426,12 +424,13 @@ def reportes_view(request):
                 elif responsable.zona == 'centro poblado':
                     stats['zona_urbana'] += 1
                 else:
+                    # 👈 aquí estaba el error: usar zona_urbana
                     if planilla.urbano_rural == 'urbano':
-                        stats['zona_urbano'] += 1
+                        stats['zona_urbana'] += 1
                     else:
                         stats['zona_rural'] += 1
 
-                # Tipo de mascota
+                # Tipo
                 if mascota.tipo == 'perro':
                     stats['perros'] += 1
                 else:
@@ -497,7 +496,7 @@ def reportes_view(request):
         reportes_detallados_municipio = list(tmp_detalle.values())
         reportes_detallados_municipio.sort(key=lambda x: x['municipio'])
 
-    # --- Estadísticas generales (a partir de municipios_stats) ---
+    # --- Estadísticas generales ---
     total_municipios = len(municipios_stats)
     total_planillas = sum(s['planillas'] for s in municipios_stats.values())
     total_responsables = sum(s['responsables'] for s in municipios_stats.values())
@@ -515,12 +514,16 @@ def reportes_view(request):
         porcentaje_rural = round(total_rural * 100 / total_mascotas, 1)
         porcentaje_perros = round(total_perros * 100 / total_mascotas, 1)
         porcentaje_gatos = round(total_gatos * 100 / total_mascotas, 1)
+        promedio_mascotas_responsable = round(total_mascotas / total_responsables, 1) if total_responsables > 0 else 0
+        promedio_responsables_planilla = round(total_responsables / total_planillas, 1) if total_planillas > 0 else 0
     else:
         porcentaje_general_tarjeta = 0
         porcentaje_urbano = 0
         porcentaje_rural = 0
         porcentaje_perros = 0
         porcentaje_gatos = 0
+        promedio_mascotas_responsable = 0
+        promedio_responsables_planilla = 0
 
     context = {
         'reportes_municipio': reportes_municipio,
@@ -536,15 +539,17 @@ def reportes_view(request):
         'total_perros': total_perros,
         'total_gatos': total_gatos,
         'porcentaje_general_tarjeta': porcentaje_general_tarjeta,
-        # alias para coincidir con el HTML de métricas clave
-        'porcentaje_tarjeta_previa': porcentaje_general_tarjeta,
+        'porcentaje_tarjeta_previa': porcentaje_general_tarjeta,  # global
         'porcentaje_urbano': porcentaje_urbano,
         'porcentaje_rural': porcentaje_rural,
         'porcentaje_perros': porcentaje_perros,
         'porcentaje_gatos': porcentaje_gatos,
+        'promedio_mascotas_responsable': promedio_mascotas_responsable,
+        'promedio_responsables_planilla': promedio_responsables_planilla,
     }
 
     return render(request, 'api/reportes.html', context)
+
 
 
 from django.contrib.auth import authenticate, login, logout
