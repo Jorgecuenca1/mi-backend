@@ -1,4 +1,7 @@
 # Nuevos reportes PDF para VetControl
+# IMPORTANTE: Importar pdf_utils ANTES que ReportLab para compatibilidad Python 3.8
+from . import pdf_utils
+
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -21,8 +24,6 @@ def reporte_municipio_por_dia_pdf(request):
     Reporte 1: Por Municipio organizado por Día
     Muestra todos los registros agrupados por municipio y luego por día
     """
-    from . import pdf_utils
-
     user = request.user
     if user.tipo_usuario != 'administrador':
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
@@ -153,8 +154,6 @@ def reporte_dia_por_municipio_pdf(request):
     Reporte 2: Por Día organizado por Municipio
     Muestra todos los registros agrupados por día y luego por municipio
     """
-    from . import pdf_utils
-
     user = request.user
     if user.tipo_usuario != 'administrador':
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
@@ -285,8 +284,6 @@ def reporte_estadistico_rango_fechas_pdf(request):
     Reporte 3: Estadístico por Rango de Fechas
     Muestra totales de perros/gatos urbano/rural por municipio en un rango de fechas
     """
-    from . import pdf_utils
-
     user = request.user
     if user.tipo_usuario != 'administrador':
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
