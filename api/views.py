@@ -391,17 +391,64 @@ def reportes_view(request):
     )
     planillas_dict = {p['municipio']: p['total'] for p in planillas_por_municipio}
 
+    # Datos estáticos de CantidadAnimal por municipio
+    CANTIDAD_ANIMAL_POR_MUNICIPIO = {
+        'barranca de upia': 1285,
+        'cabuyaro': 1283,
+        'castilla la nueva': 3637,
+        'cubarral': 2398,
+        'cumaral': 5965,
+        'el calvario': 739,
+        'el castillo': 3434,
+        'el dorado': 1868,
+        'fuente de oro': 2898,
+        'fuentedeoro': 2898,
+        'granada': 13975,
+        'guamal': 3544,
+        'la macarena': 3351,
+        'lejanias': 4034,
+        'mapiripan': 845,
+        'mesetas': 2594,
+        'puerto concordia': 1849,
+        'puerto lleras': 4589,
+        'puerto lopez': 7028,
+        'puerto rico': 3198,
+        'restrepo': 6074,
+        'san carlos de guaroa': 2754,
+        'san juan de arama': 2196,
+        'san juanito': 683,
+        'san martin': 6208,
+        'uribe': 1093,
+        'vistahermosa': 3017,
+        'vista hermosa': 3017,
+    }
+
+    # Función para normalizar nombres de municipios (quitar tildes, minúsculas, etc)
+    def normalizar_municipio(nombre):
+        import unicodedata
+        # Quitar tildes
+        nombre = ''.join(c for c in unicodedata.normalize('NFD', nombre) if unicodedata.category(c) != 'Mn')
+        # Convertir a minúsculas
+        return nombre.lower().strip()
+
     # Construir el reporte
     reportes_municipio = []
     for stats in municipios_stats_raw:
         municipio = stats['municipio']
         total = stats['total_mascotas']
 
-        porcentaje_tarjeta_previa = round((stats['con_tarjeta_previa'] / total) * 100, 1) if total > 0 else 0
+        # Buscar cantidad animal usando nombre normalizado
+        municipio_normalizado = normalizar_municipio(municipio)
+        cantidad_animal = CANTIDAD_ANIMAL_POR_MUNICIPIO.get(municipio_normalizado, 0)
+
+        # Calcular % Vacunados = (Total Mascotas / CantidadAnimal) * 100
+        porcentaje_vacunados = round((total / cantidad_animal) * 100, 1) if cantidad_animal > 0 else 0
 
         reportes_municipio.append({
             'municipio': municipio,
+            'cantidad_animal': cantidad_animal,
             'total_mascotas': total,
+            'porcentaje_vacunados': porcentaje_vacunados,
             'con_tarjeta_previa': stats['con_tarjeta_previa'],
             'sin_tarjeta_previa': stats['sin_tarjeta_previa'],
             'zona_urbana': stats['zona_urbana'],
@@ -409,13 +456,12 @@ def reportes_view(request):
             'perros': stats['perros'],
             'gatos': stats['gatos'],
             'responsables': responsables_dict.get(municipio, 0),
-            'planillas': planillas_dict.get(municipio, 0),
-            'porcentaje_tarjeta_previa': porcentaje_tarjeta_previa,
         })
 
     # Estadísticas generales (agregaciones simples)
     total_municipios = len(reportes_municipio)
-    total_planillas = sum(r['planillas'] for r in reportes_municipio)
+    total_cantidad_animal = sum(r['cantidad_animal'] for r in reportes_municipio)
+    total_planillas = len(planillas_dict)
     total_responsables = sum(r['responsables'] for r in reportes_municipio)
     total_mascotas = sum(r['total_mascotas'] for r in reportes_municipio)
     total_con_tarjeta = sum(r['con_tarjeta_previa'] for r in reportes_municipio)
@@ -426,6 +472,8 @@ def reportes_view(request):
     total_gatos = sum(r['gatos'] for r in reportes_municipio)
 
     # Calcular porcentajes generales
+    porcentaje_general_vacunados = round((total_mascotas / total_cantidad_animal) * 100, 1) if total_cantidad_animal > 0 else 0
+
     if total_mascotas > 0:
         porcentaje_general_tarjeta = round((total_con_tarjeta / total_mascotas) * 100, 1)
         porcentaje_urbano = round((total_urbano / total_mascotas) * 100, 1)
@@ -445,14 +493,16 @@ def reportes_view(request):
         # NO cargar todos los detalles aquí - demasiado pesado
         # En su lugar, solo mostrar resumen y permitir drill-down por municipio
         pass
-    
+
     context = {
         'reportes_municipio': reportes_municipio,
         'reportes_detallados_municipio': reportes_detallados_municipio if user.tipo_usuario == 'administrador' else [],
         'total_municipios': total_municipios,
+        'total_cantidad_animal': total_cantidad_animal,
         'total_planillas': total_planillas,
         'total_responsables': total_responsables,
         'total_mascotas': total_mascotas,
+        'porcentaje_general_vacunados': porcentaje_general_vacunados,
         'total_con_tarjeta': total_con_tarjeta,
         'total_sin_tarjeta': total_sin_tarjeta,
         'total_urbano': total_urbano,

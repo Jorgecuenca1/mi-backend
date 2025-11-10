@@ -126,11 +126,11 @@
             <thead>
                 <tr>
                     <th>Municipio</th>
-                    <th>Municipios</th>
+                    <th>CantidadAnimal</th>
                     <th>Responsables</th>
                     <th>Total Mascotas</th>
+                    <th>% Vacunados</th>
                     <th>Con Tarjeta Previa</th>
-                    <th>% Tarjeta Previa</th>
                     <th>Zona Urbana</th>
                     <th>Zona Rural</th>
                     <th>Perros</th>
@@ -141,21 +141,21 @@
                 {% for reporte in reportes_municipio %}
                 <tr>
                     <td style="font-weight: 600; color: #495057;">{{ reporte.municipio }}</td>
-                    <td>{{ reporte.planillas }}</td>
+                    <td style="font-weight: 500; color: #6c757d;">{{ reporte.cantidad_animal }}</td>
                     <td>{{ reporte.responsables }}</td>
                     <td style="font-weight: 500;">{{ reporte.total_mascotas }}</td>
-                    <td style="color: #28a745; font-weight: 500;">{{ reporte.con_tarjeta_previa }}</td>
                     <td>
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <span style="font-weight: 500;">{{ reporte.porcentaje_tarjeta_previa }}%</span>
+                            <span style="font-weight: 500;">{{ reporte.porcentaje_vacunados }}%</span>
                             <div
                                 style="width: 60px; height: 6px; background: #e9ecef; border-radius: 3px; overflow: hidden;">
                                 <div
-                                    style="width: {{ reporte.porcentaje_tarjeta_previa }}%; height: 100%; background: {% if reporte.porcentaje_tarjeta_previa >= 80 %}#28a745{% elif reporte.porcentaje_tarjeta_previa >= 50 %}#ffc107{% else %}#dc3545{% endif %};">
+                                    style="width: {{ reporte.porcentaje_vacunados }}%; height: 100%; background: {% if reporte.porcentaje_vacunados >= 80 %}#28a745{% elif reporte.porcentaje_vacunados >= 50 %}#ffc107{% else %}#dc3545{% endif %};">
                                 </div>
                             </div>
                         </div>
                     </td>
+                    <td style="color: #28a745; font-weight: 500;">{{ reporte.con_tarjeta_previa }}</td>
                     <td>🏙️ {{ reporte.zona_urbana }}</td>
                     <td>🌾 {{ reporte.zona_rural }}</td>
                     <td>🐕 {{ reporte.perros }}</td>
