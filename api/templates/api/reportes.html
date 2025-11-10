@@ -1,69 +1,60 @@
+{% extends 'api/base.html' %}
+
 {% block title %}Reportes - VetControl{% endblock %}
 
 {% block content %}
-
-{% with tipo=user.tipo_usuario %}
 <!-- Header Section -->
 <section
-    class="mb-4"
-    style="background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%);
-           border-radius: 20px; padding: 2rem; text-align: center;">
+    style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-radius: 20px; padding: 2rem; text-align: center; margin-bottom: 2rem;">
     <h1 style="font-size: 2.5rem; font-weight: bold; color: #495057; margin-bottom: 1rem;">
         📊 Reportes del Sistema
     </h1>
-
     <p style="font-size: 1.1rem; color: #6c757d;">
-        {% if tipo == 'administrador' %}
-            Estadísticas completas de todos los municipios y registros
-        {% elif tipo == 'tecnico' %}
-            Estadísticas de todos los registros de tus municipios asignados
-        {% elif tipo == 'vacunador' %}
-            Estadísticas de tus propios registros y municipios
+        {% if user.tipo_usuario == 'administrador' %}
+        Estadísticas completas de todos los municipios y registros
+        {% elif user.tipo_usuario == 'tecnico' %}
+        Estadísticas de todos los registros de tus municipios asignados
+        {% elif user.tipo_usuario == 'vacunador' %}
+        Estadísticas de tus propios registros y municipios
         {% else %}
-            Estadísticas detalladas de vacunación por municipio y zona
+        Estadísticas detalladas de vacunación por municipio y zona
         {% endif %}
     </p>
-
     <p style="font-size: 0.9rem; color: #6c757d; font-style: italic;">
-        ✅ Todas las mascotas están vacunadas • El campo <strong>"antecedente vacunal"</strong> se refiere a tarjeta de
-        vacunación previa.
+        ✅ Todas las mascotas están vacunadas • El campo "antecedente vacunal" se refiere a tarjeta de vacunación previa
     </p>
-
     {% if user.is_authenticated %}
-    <div style="background: rgba(255,255,255,0.85); padding: 0.75rem 1rem; border-radius: 8px; margin-top: 1rem; display: inline-block;">
-        <span style="font-size: 0.9rem; color: #495057;">
+    <div style="background: rgba(255,255,255,0.8); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+        <p style="margin: 0; font-size: 0.9rem; color: #495057;">
             <strong>Usuario:</strong> {{ user.username }} |
             <strong>Rol:</strong>
-            {% if tipo == 'administrador' %}
-                🔧 Administrador
-            {% elif tipo == 'tecnico' %}
-                👨‍🔬 Técnico
-            {% elif tipo == 'vacunador' %}
-                💉 Vacunador
+            {% if user.tipo_usuario == 'administrador' %}
+            🔧 Administrador
+            {% elif user.tipo_usuario == 'tecnico' %}
+            👨‍🔬 Técnico
+            {% elif user.tipo_usuario == 'vacunador' %}
+            💉 Vacunador
             {% else %}
-                👤 Usuario
+            👤 Usuario
             {% endif %}
-        </span>
+        </p>
     </div>
     {% endif %}
 </section>
 
-<!-- Enlace solo para Administrador -->
-{% if tipo == 'administrador' %}
-<section class="card mb-4"
-    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white;">
+<!-- Enlaces de Administrador -->
+{% if user.tipo_usuario == 'administrador' %}
+<section class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white; margin-bottom: 2rem;">
     <div class="card-body">
         <div class="row align-items-center">
             <div class="col-md-8">
-                <h3 class="mb-1" style="color: white;">🌳 Árbol Jerárquico de Reportes</h3>
-                <p class="mb-0" style="color: rgba(255,255,255,0.9); font-size: 0.95rem;">
+                <h3 style="color: white; margin-bottom: 0.5rem;">🌳 Árbol Jerárquico de Reportes</h3>
+                <p style="color: rgba(255,255,255,0.9); margin-bottom: 0; font-size: 0.95rem;">
                     Vista detallada por Meta → Municipio → Vacunador → Día → Responsable → Mascota
                 </p>
             </div>
-            <div class="col-md-4 text-md-right mt-3 mt-md-0">
-                <a href="{% url 'arbol_reportes_web' %}"
-                   class="btn btn-light btn-lg"
-                   style="font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <div class="col-md-4 text-right">
+                <a href="{% url 'arbol_reportes_web' %}" class="btn btn-light btn-lg" style="font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                     <i class="fas fa-sitemap"></i> Ver Árbol
                 </a>
             </div>
@@ -72,19 +63,19 @@
 </section>
 {% endif %}
 
-<!-- Resumen General -->
-<section class="card mb-4">
+<!-- Summary Stats -->
+<section class="card">
     <div class="card-header">
-        <h2 class="card-title mb-0">📈 Resumen General</h2>
+        <h2 class="card-title">📈 Resumen General</h2>
     </div>
-    <div class="stats-grid p-3">
+    <div class="stats-grid">
         <div class="stat-card">
             <span class="stat-number">{{ total_municipios }}</span>
             <div class="stat-label">Municipios Atendidos</div>
         </div>
         <div class="stat-card">
             <span class="stat-number">{{ total_planillas }}</span>
-            <div class="stat-label">Planillas Registradas</div>
+            <div class="stat-label">Municipios Registrados</div>
         </div>
         <div class="stat-card">
             <span class="stat-number">{{ total_responsables }}</span>
@@ -97,17 +88,15 @@
     </div>
 </section>
 
-<!-- Métricas Clave -->
-<section class="card mb-4">
+<!-- Key Metrics -->
+<section class="card">
     <div class="card-header">
-        <h2 class="card-title mb-0">🎯 Métricas Clave</h2>
+        <h2 class="card-title">🎯 Métricas Clave</h2>
     </div>
-    <div class="stats-grid p-3">
+    <div class="stats-grid">
         <div class="stat-card">
             <span class="stat-number">{{ total_con_tarjeta }}</span>
-            <div class="stat-label">
-                Con Tarjeta Previa ({{ porcentaje_tarjeta_previa }}%)
-            </div>
+            <div class="stat-label">Con Tarjeta Previa ({{ porcentaje_tarjeta_previa }}%)</div>
         </div>
         <div class="stat-card">
             <span class="stat-number">{{ total_sin_tarjeta }}</span>
@@ -115,31 +104,29 @@
         </div>
         <div class="stat-card">
             <span class="stat-number">{{ promedio_mascotas_responsable }}</span>
-            <div class="stat-label">Promedio Mascotas / Responsable</div>
+            <div class="stat-label">Promedio Mascotas/Responsable</div>
         </div>
         <div class="stat-card">
             <span class="stat-number">{{ promedio_responsables_planilla }}</span>
-            <div class="stat-label">Promedio Responsables / Municipio</div>
+            <div class="stat-label">Promedio Responsables/Municipio</div>
         </div>
     </div>
 </section>
 
-<!-- Reporte por Municipio -->
-<section class="card mb-4">
+<!-- Reports by Municipality -->
+<section class="card">
     <div class="card-header">
-        <h2 class="card-title mb-0">🏘️ Reporte por Municipio</h2>
-        <p class="mb-0" style="color: #6c757d; margin-top: 0.5rem;">
-            Estadísticas agregadas por municipio
-        </p>
+        <h2 class="card-title">🏘️ Reporte por Municipio</h2>
+        <p style="color: #6c757d; margin-top: 0.5rem;">Estadísticas detalladas por cada municipio</p>
     </div>
 
     {% if reportes_municipio %}
     <div style="overflow-x: auto;">
-        <table class="table mb-0">
+        <table class="table">
             <thead>
                 <tr>
                     <th>Municipio</th>
-                    <th>Planillas</th>
+                    <th>Municipios</th>
                     <th>Responsables</th>
                     <th>Total Mascotas</th>
                     <th>Con Tarjeta Previa</th>
@@ -153,33 +140,18 @@
             <tbody>
                 {% for reporte in reportes_municipio %}
                 <tr>
-                    <td style="font-weight: 600; color: #495057;">
-                        {{ reporte.municipio }}
-                    </td>
+                    <td style="font-weight: 600; color: #495057;">{{ reporte.municipio }}</td>
                     <td>{{ reporte.planillas }}</td>
                     <td>{{ reporte.responsables }}</td>
                     <td style="font-weight: 500;">{{ reporte.total_mascotas }}</td>
-                    <td style="color: #28a745; font-weight: 500;">
-                        {{ reporte.con_tarjeta_previa }}
-                    </td>
+                    <td style="color: #28a745; font-weight: 500;">{{ reporte.con_tarjeta_previa }}</td>
                     <td>
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <span style="font-weight: 500;">
-                                {{ reporte.porcentaje_tarjeta_previa }}%
-                            </span>
-                            <div style="width: 60px; height: 6px; background: #e9ecef; border-radius: 3px; overflow: hidden;">
-                                <div style="
-                                    width: {{ reporte.porcentaje_tarjeta_previa }}%;
-                                    height: 100%;
-                                    background:
-                                        {% if reporte.porcentaje_tarjeta_previa >= 80 %}
-                                            #28a745
-                                        {% elif reporte.porcentaje_tarjeta_previa >= 50 %}
-                                            #ffc107
-                                        {% else %}
-                                            #dc3545
-                                        {% endif %};
-                                ">
+                            <span style="font-weight: 500;">{{ reporte.porcentaje_tarjeta_previa }}%</span>
+                            <div
+                                style="width: 60px; height: 6px; background: #e9ecef; border-radius: 3px; overflow: hidden;">
+                                <div
+                                    style="width: {{ reporte.porcentaje_tarjeta_previa }}%; height: 100%; background: {% if reporte.porcentaje_tarjeta_previa >= 80 %}#28a745{% elif reporte.porcentaje_tarjeta_previa >= 50 %}#ffc107{% else %}#dc3545{% endif %};">
                                 </div>
                             </div>
                         </div>
@@ -196,116 +168,84 @@
     {% else %}
     <div style="text-align: center; padding: 3rem; color: #6c757d;">
         <div style="font-size: 4rem; margin-bottom: 1rem;">📊</div>
-        <h3 class="mb-1">No hay datos disponibles</h3>
-        <p class="mb-0">Aún no se han registrado mascotas en el sistema.</p>
+        <h3>No hay datos disponibles</h3>
+        <p>Aún no se han registrado mascotas en el sistema.</p>
     </div>
     {% endif %}
 </section>
 
-<!-- Tablas Detalladas por Municipio (solo Administrador) -->
-{% if tipo == 'administrador' and reportes_detallados_municipio %}
-<section class="card mb-4">
+<!-- Detailed Tables by Municipality (Only for Administrators) -->
+{% if user.tipo_usuario == 'administrador' and reportes_detallados_municipio %}
+<section class="card">
     <div class="card-header">
-        <h2 class="card-title mb-0">📋 Tablas Detalladas por Municipio</h2>
-        <p class="mb-0" style="color: #6c757d; margin-top: 0.5rem;">
-            Vista detallada de responsables y mascotas por municipio
-        </p>
+        <h2 class="card-title">📋 Tablas Detalladas por Municipio</h2>
+        <p style="color: #6c757d; margin-top: 0.5rem;">Vista detallada de todos los responsables y mascotas por
+            municipio</p>
     </div>
 
     {% for municipio_data in reportes_detallados_municipio %}
-    <div class="mb-4"
-         style="border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white; padding: 1.5rem; text-align: center;">
-            <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold;">
-                🏘️ {{ municipio_data.municipio }}
-            </h3>
-            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">
-                {{ municipio_data.responsables|length }} responsables registrados
-            </p>
+    <div style="margin-bottom: 3rem; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden;">
+        <div
+            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; text-align: center;">
+            <h3 style="margin: 0; font-size: 1.5rem; font-weight: bold;">🏘️ {{ municipio_data.municipio }}</h3>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">{{ municipio_data.responsables|length }} responsables
+                registrados</p>
         </div>
 
         {% if municipio_data.responsables %}
         <div style="overflow-x: auto;">
-            <table class="table mb-0">
+            <table class="table" style="margin: 0;">
                 <thead style="background: #f8f9fa;">
                     <tr>
-                        <th>Responsable</th>
-                        <th>Teléfono</th>
-                        <th>Finca</th>
-                        <th>Zona</th>
-                        <th>Nombre Zona</th>
-                        <th>Lote Vacuna</th>
-                        <th>Mascotas</th>
-                        <th>Creado por</th>
-                        <th>Fecha</th>
+                        <th style="padding: 1rem;">Responsable</th>
+                        <th style="padding: 1rem;">Teléfono</th>
+                        <th style="padding: 1rem;">Finca</th>
+                        <th style="padding: 1rem;">Zona</th>
+                        <th style="padding: 1rem;">Nombre Zona</th>
+                        <th style="padding: 1rem;">Lote Vacuna</th>
+                        <th style="padding: 1rem;">Mascotas</th>
+                        <th style="padding: 1rem;">Creado por</th>
+                        <th style="padding: 1rem;">Fecha</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for responsable in municipio_data.responsables %}
-                    <tr>
-                        <td style="font-weight: 600; color: #495057;">
-                            {{ responsable.nombre }}
-                        </td>
-                        <td>{{ responsable.telefono }}</td>
-                        <td>{{ responsable.finca }}</td>
-                        <td>
+                    <tr style="border-bottom: 1px solid #e9ecef;">
+                        <td style="padding: 1rem; font-weight: 600; color: #495057;">{{ responsable.nombre }}</td>
+                        <td style="padding: 1rem;">{{ responsable.telefono }}</td>
+                        <td style="padding: 1rem;">{{ responsable.finca }}</td>
+                        <td style="padding: 1rem;">
                             {% if responsable.zona == 'barrio' %}
-                                🏙️ {{ responsable.zona|capfirst }}
+                            🏙️ {{ responsable.zona|capfirst }}
                             {% elif responsable.zona == 'vereda' %}
-                                🌾 {{ responsable.zona|capfirst }}
+                            🌾 {{ responsable.zona|capfirst }}
                             {% else %}
-                                📍 {{ responsable.zona|capfirst }}
+                            📍 {{ responsable.zona|capfirst }}
                             {% endif %}
                         </td>
-                        <td>{{ responsable.nombre_zona }}</td>
-                        <td style="font-family: monospace; background: #f8f9fa; border-radius: 4px;">
-                            {{ responsable.lote_vacuna }}
-                        </td>
-                        <td>
-                            <div style="max-width: 320px;">
+                        <td style="padding: 1rem;">{{ responsable.nombre_zona }}</td>
+                        <td style="padding: 1rem; font-family: monospace; background: #f8f9fa; border-radius: 4px;">{{
+                            responsable.lote_vacuna }}</td>
+                        <td style="padding: 1rem;">
+                            <div style="max-width: 300px;">
                                 {% for mascota in responsable.mascotas %}
-                                <div style="
-                                    display: flex;
-                                    align-items: center;
-                                    gap: 0.5rem;
-                                    margin-bottom: 0.5rem;
-                                    padding: 0.5rem;
-                                    background:
-                                        {% if mascota.tipo == 'perro' %}
-                                            #fff3e0
-                                        {% else %}
-                                            #fce4ec
-                                        {% endif %};
-                                    border-radius: 6px;
-                                    font-size: 0.85rem;
-                                ">
-                                    <span>
-                                        {% if mascota.tipo == 'perro' %}🐕{% else %}🐱{% endif %}
-                                    </span>
+                                <div
+                                    style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; padding: 0.5rem; background: {% if mascota.tipo == 'perro' %}#fff3e0{% else %}#fce4ec{% endif %}; border-radius: 6px; font-size: 0.85rem;">
+                                    <span>{% if mascota.tipo == 'perro' %}🐕{% else %}🐱{% endif %}</span>
                                     <strong>{{ mascota.nombre }}</strong>
-                                    <span style="color: #6c757d;">
-                                        ({{ mascota.raza }}, {{ mascota.color }})
-                                    </span>
+                                    <span style="color: #6c757d;">({{ mascota.raza }}, {{ mascota.color }})</span>
                                     {% if mascota.antecedente_vacunal %}
-                                    <span style="color: #28a745; font-size: 0.7rem;">
-                                        ✅ Tarjeta
-                                    </span>
+                                    <span style="color: #28a745; font-size: 0.7rem;">✅ Tarjeta</span>
                                     {% endif %}
                                 </div>
                                 {% empty %}
-                                <span style="color: #6c757d; font-style: italic;">
-                                    Sin mascotas
-                                </span>
+                                <span style="color: #6c757d; font-style: italic;">Sin mascotas</span>
                                 {% endfor %}
                             </div>
                         </td>
-                        <td style="font-size: 0.85rem; color: #6c757d;">
-                            {{ responsable.created_by }}
-                        </td>
-                        <td style="font-size: 0.85rem; color: #6c757d;">
-                            {{ responsable.creado|date:"d/m/Y H:i" }}
-                        </td>
+                        <td style="padding: 1rem; font-size: 0.85rem; color: #6c757d;">{{ responsable.created_by }}</td>
+                        <td style="padding: 1rem; font-size: 0.85rem; color: #6c757d;">{{ responsable.creado|date:"d/m/Y
+                            H:i" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -314,7 +254,7 @@
         {% else %}
         <div style="text-align: center; padding: 2rem; color: #6c757d;">
             <div style="font-size: 3rem; margin-bottom: 1rem;">📝</div>
-            <p class="mb-0">No hay responsables registrados en este municipio.</p>
+            <p>No hay responsables registrados en este municipio</p>
         </div>
         {% endif %}
     </div>
@@ -322,22 +262,17 @@
 </section>
 {% endif %}
 
-<!-- Top 5 Municipios -->
+<!-- Top Municipalities -->
 {% if top_municipios_mascotas %}
-<section class="card mb-4">
+<section class="card">
     <div class="card-header">
-        <h2 class="card-title mb-0">🏆 Top 5 Municipios con Más Mascotas</h2>
+        <h2 class="card-title">🏆 Top 5 Municipios con Más Mascotas</h2>
     </div>
-    <div class="p-3"
-         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
         {% for municipio in top_municipios_mascotas %}
         <div style="padding: 1rem; border: 1px solid #e9ecef; border-radius: 8px; text-align: center;">
-            <h4 style="color: #495057; margin-bottom: 0.5rem;">
-                {{ forloop.counter }}. {{ municipio.municipio }}
-            </h4>
-            <div style="font-size: 1.5rem; font-weight: bold; color: #667eea;">
-                {{ municipio.total_mascotas }}
-            </div>
+            <h4 style="color: #495057; margin-bottom: 0.5rem;">{{ forloop.counter }}. {{ municipio.municipio }}</h4>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #667eea;">{{ municipio.total_mascotas }}</div>
             <div style="font-size: 0.8rem; color: #6c757d;">mascotas</div>
         </div>
         {% endfor %}
@@ -345,14 +280,13 @@
 </section>
 {% endif %}
 
-<!-- Distribución de Mascotas -->
-<section class="card mb-4">
+<!-- Distribution Charts -->
+<section class="card">
     <div class="card-header">
-        <h2 class="card-title mb-0">📊 Distribución de Mascotas</h2>
+        <h2 class="card-title">📊 Distribución de Mascotas</h2>
     </div>
 
-    <div class="p-3"
-         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
         <!-- Urbano vs Rural -->
         <div style="text-align: center; padding: 1.5rem; border: 1px solid #e9ecef; border-radius: 12px;">
             <h4 style="color: #495057; margin-bottom: 1rem;">Distribución por Zona</h4>
@@ -360,15 +294,12 @@
                 <svg width="120" height="120" style="transform: rotate(-90deg);">
                     <circle cx="60" cy="60" r="50" fill="none" stroke="#e9ecef" stroke-width="8"></circle>
                     <circle cx="60" cy="60" r="50" fill="none" stroke="#1976d2" stroke-width="8"
-                            stroke-dasharray="{{ porcentaje_urbano|floatformat:0 }}.14 314.16"
-                            stroke-linecap="round">
+                        stroke-dasharray="{{ porcentaje_urbano|floatformat:0 }}.14 314.16" stroke-linecap="round">
                     </circle>
                 </svg>
-                <div style="position: absolute; top: 50%; left: 50%;
-                            transform: translate(-50%, -50%); text-align: center;">
-                    <div style="font-size: 1.2rem; font-weight: bold; color: #1976d2;">
-                        {{ porcentaje_urbano }}%
-                    </div>
+                <div
+                    style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                    <div style="font-size: 1.2rem; font-weight: bold; color: #1976d2;">{{ porcentaje_urbano }}%</div>
                     <div style="font-size: 0.7rem; color: #6c757d;">Urbano</div>
                 </div>
             </div>
@@ -385,15 +316,12 @@
                 <svg width="120" height="120" style="transform: rotate(-90deg);">
                     <circle cx="60" cy="60" r="50" fill="none" stroke="#e9ecef" stroke-width="8"></circle>
                     <circle cx="60" cy="60" r="50" fill="none" stroke="#f57c00" stroke-width="8"
-                            stroke-dasharray="{{ porcentaje_perros|floatformat:0 }}.14 314.16"
-                            stroke-linecap="round">
+                        stroke-dasharray="{{ porcentaje_perros|floatformat:0 }}.14 314.16" stroke-linecap="round">
                     </circle>
                 </svg>
-                <div style="position: absolute; top: 50%; left: 50%;
-                            transform: translate(-50%, -50%); text-align: center;">
-                    <div style="font-size: 1.2rem; font-weight: bold; color: #f57c00;">
-                        {{ porcentaje_perros }}%
-                    </div>
+                <div
+                    style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                    <div style="font-size: 1.2rem; font-weight: bold; color: #f57c00;">{{ porcentaje_perros }}%</div>
                     <div style="font-size: 0.7rem; color: #6c757d;">Perros</div>
                 </div>
             </div>
@@ -405,20 +333,21 @@
     </div>
 </section>
 
-<!-- Distribución por Raza -->
+<!-- Breed Distribution -->
 {% if razas_perros or razas_gatos %}
-<section class="card mb-4">
+<section class="card">
     <div class="card-header">
-        <h2 class="card-title mb-0">🧬 Distribución por Raza</h2>
+        <h2 class="card-title">🧬 Distribución por Raza</h2>
     </div>
-    <div class="p-3"
-         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
         {% if razas_perros %}
         <div>
             <h4 style="color: #495057; margin-bottom: 1rem; text-align: center;">🐕 Razas de Perros</h4>
             <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px;">
                 {% for raza, cantidad in razas_perros.items %}
-                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e9ecef;">
+                <div
+                    style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e9ecef;">
                     <span>{{ raza }}</span>
                     <span style="font-weight: bold; color: #f57c00;">{{ cantidad }}</span>
                 </div>
@@ -432,7 +361,8 @@
             <h4 style="color: #495057; margin-bottom: 1rem; text-align: center;">🐱 Razas de Gatos</h4>
             <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px;">
                 {% for raza, cantidad in razas_gatos.items %}
-                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e9ecef;">
+                <div
+                    style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #e9ecef;">
                     <span>{{ raza }}</span>
                     <span style="font-weight: bold; color: #c2185b;">{{ cantidad }}</span>
                 </div>
@@ -444,28 +374,27 @@
 </section>
 {% endif %}
 
-<!-- Control de Vacunación -->
+<!-- Vaccination Control -->
 {% if zonas_vacunacion or lotes_vacuna %}
-<section class="card mb-4">
+<section class="card">
     <div class="card-header">
-        <h2 class="card-title mb-0">💉 Control de Vacunación</h2>
-        <p class="mb-0" style="color: #6c757d; margin-top: 0.5rem;">
-            Distribución por zonas de vacunación y lotes de vacuna
-        </p>
+        <h2 class="card-title">💉 Control de Vacunación</h2>
+        <p style="color: #6c757d; margin-top: 0.5rem;">Distribución por zonas de vacunación y lotes de vacuna</p>
     </div>
 
-    <div class="p-3"
-         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 2rem;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 2rem;">
         {% if zonas_vacunacion %}
         <div>
             <h4 style="color: #495057; margin-bottom: 1rem; text-align: center;">🗺️ Top 10 Zonas de Vacunación</h4>
-            <div style="background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); padding: 1rem; border-radius: 8px;">
+            <div
+                style="background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); padding: 1rem; border-radius: 8px;">
                 {% for zona, cantidad in zonas_vacunacion.items %}
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0; border-bottom: 1px solid rgba(255,255,255,0.5);">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0; border-bottom: 1px solid rgba(255,255,255,0.5);">
                     <span style="font-size: 0.9rem; color: #2e7d32;">{{ zona }}</span>
-                    <span style="font-weight: bold; color: #1b5e20; background: rgba(255,255,255,0.7); padding: 0.2rem 0.5rem; border-radius: 4px;">
-                        {{ cantidad }} mascotas
-                    </span>
+                    <span
+                        style="font-weight: bold; color: #1b5e20; background: rgba(255,255,255,0.7); padding: 0.2rem 0.5rem; border-radius: 4px;">{{
+                        cantidad }} mascotas</span>
                 </div>
                 {% endfor %}
             </div>
@@ -475,13 +404,15 @@
         {% if lotes_vacuna %}
         <div>
             <h4 style="color: #495057; margin-bottom: 1rem; text-align: center;">🧪 Top 10 Lotes de Vacuna</h4>
-            <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); padding: 1rem; border-radius: 8px;">
+            <div
+                style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); padding: 1rem; border-radius: 8px;">
                 {% for lote, cantidad in lotes_vacuna.items %}
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0; border-bottom: 1px solid rgba(255,255,255,0.5);">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; padding: 0.7rem 0; border-bottom: 1px solid rgba(255,255,255,0.5);">
                     <span style="font-size: 0.9rem; color: #1565c0; font-family: monospace;">{{ lote }}</span>
-                    <span style="font-weight: bold; color: #0d47a1; background: rgba(255,255,255,0.7); padding: 0.2rem 0.5rem; border-radius: 4px;">
-                        {{ cantidad }} mascotas
-                    </span>
+                    <span
+                        style="font-weight: bold; color: #0d47a1; background: rgba(255,255,255,0.7); padding: 0.2rem 0.5rem; border-radius: 4px;">{{
+                        cantidad }} mascotas</span>
                 </div>
                 {% endfor %}
             </div>
@@ -491,93 +422,74 @@
 </section>
 {% endif %}
 
-<!-- Estadísticas Detalladas -->
-<section class="card mb-4">
+<!-- Detailed Statistics -->
+<section class="card">
     <div class="card-header">
-        <h2 class="card-title mb-0">📋 Estadísticas Detalladas</h2>
+        <h2 class="card-title">📋 Estadísticas Detalladas</h2>
     </div>
 
-    <div class="p-3"
-         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
-        <div style="padding: 1.5rem; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-                    border-radius: 12px; text-align: center;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+        <div
+            style="padding: 1.5rem; background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-radius: 12px; text-align: center;">
             <div style="font-size: 2rem; margin-bottom: 0.5rem;">🏙️</div>
-            <div style="font-size: 1.8rem; font-weight: bold; color: #1976d2;">
-                {{ total_urbano }}
-            </div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: #1976d2;">{{ total_urbano }}</div>
             <div style="color: #424242; font-size: 0.9rem;">Mascotas en Zona Urbana</div>
-            <div style="color: #424242; font-size: 0.8rem; margin-top: 0.3rem;">
-                ({{ porcentaje_urbano }}%)
-            </div>
+            <div style="color: #424242; font-size: 0.8rem; margin-top: 0.3rem;">({{ porcentaje_urbano }}%)</div>
         </div>
 
-        <div style="padding: 1.5rem; background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
-                    border-radius: 12px; text-align: center;">
+        <div
+            style="padding: 1.5rem; background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); border-radius: 12px; text-align: center;">
             <div style="font-size: 2rem; margin-bottom: 0.5rem;">🌾</div>
-            <div style="font-size: 1.8rem; font-weight: bold; color: #388e3c;">
-                {{ total_rural }}
-            </div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: #388e3c;">{{ total_rural }}</div>
             <div style="color: #424242; font-size: 0.9rem;">Mascotas en Zona Rural</div>
-            <div style="color: #424242; font-size: 0.8rem; margin-top: 0.3rem;">
-                ({{ porcentaje_rural }}%)
-            </div>
+            <div style="color: #424242; font-size: 0.8rem; margin-top: 0.3rem;">({{ porcentaje_rural }}%)</div>
         </div>
 
-        <div style="padding: 1.5rem; background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-                    border-radius: 12px; text-align: center;">
+        <div
+            style="padding: 1.5rem; background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-radius: 12px; text-align: center;">
             <div style="font-size: 2rem; margin-bottom: 0.5rem;">🐕</div>
-            <div style="font-size: 1.8rem; font-weight: bold; color: #f57c00;">
-                {{ total_perros }}
-            </div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: #f57c00;">{{ total_perros }}</div>
             <div style="color: #424242; font-size: 0.9rem;">Total de Perros</div>
-            <div style="color: #424242; font-size: 0.8rem; margin-top: 0.3rem;">
-                ({{ porcentaje_perros }}%)
-            </div>
+            <div style="color: #424242; font-size: 0.8rem; margin-top: 0.3rem;">({{ porcentaje_perros }}%)</div>
         </div>
 
-        <div style="padding: 1.5rem; background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
-                    border-radius: 12px; text-align: center;">
+        <div
+            style="padding: 1.5rem; background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%); border-radius: 12px; text-align: center;">
             <div style="font-size: 2rem; margin-bottom: 0.5rem;">🐱</div>
-            <div style="font-size: 1.8rem; font-weight: bold; color: #c2185b;">
-                {{ total_gatos }}
-            </div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: #c2185b;">{{ total_gatos }}</div>
             <div style="color: #424242; font-size: 0.9rem;">Total de Gatos</div>
-            <div style="color: #424242; font-size: 0.8rem; margin-top: 0.3rem;">
-                ({{ porcentaje_gatos }}%)
-            </div>
+            <div style="color: #424242; font-size: 0.8rem; margin-top: 0.3rem;">({{ porcentaje_gatos }}%)</div>
         </div>
     </div>
 </section>
 
-<!-- Acciones -->
-<section style="text-align: center; margin-top: 2rem; margin-bottom: 1rem;">
+<!-- Actions -->
+<section style="text-align: center; margin-top: 2rem;">
     <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
         <a href="{% url 'landing' %}" class="btn btn-secondary">← Volver al Inicio</a>
         <a href="/admin/" class="btn btn-primary">Panel de Administración</a>
-        <button type="button" onclick="window.print()" class="btn btn-secondary">
-            🖨️ Imprimir Reporte
-        </button>
+        <button onclick="window.print()" class="btn btn-secondary">🖨️ Imprimir Reporte</button>
     </div>
 </section>
-{% endwith %}
 
 <style>
-@media print {
-    .header,
-    .footer,
-    .nav-links,
-    button,
-    a.btn {
-        display: none !important;
-    }
-    .card {
-        box-shadow: none !important;
-        border: 1px solid #ddd !important;
-    }
-    body {
-        background: white !important;
-    }
-}
-</style>
+    @media print {
 
+        .header,
+        .footer,
+        .nav-links,
+        button {
+            display: none !important;
+        }
+
+        .card {
+            box-shadow: none;
+            border: 1px solid #ddd;
+        }
+
+        body {
+            background: white !important;
+        }
+    }
+</style>
 {% endblock %}
