@@ -847,69 +847,122 @@ def dashboard_tecnico(request):
     return render(request, 'api/dashboard_usuario.html', context)
 
 
+from django.shortcuts import redirect, render
+from django.db.models import Count, Q, Case, When, IntegerField
+
+from .models import Planilla, Responsable, Mascota, Veterinario
+
+
 @login_required
 def dashboard_administrador(request):
     """Dashboard para administradores - Ven todo"""
-    if request.user.tipo_usuario != 'administrador':
+    user = request.user
+
+    if user.tipo_usuario != 'administrador':
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('login')
-    
-    # Administradores ven todo
-    planillas = Planilla.objects.all()
-    responsables = Responsable.objects.all().select_related('created_by', 'planilla').order_by('-creado')
-    mascotas = Mascota.objects.all()
-    
-    # Calcular estadísticas de zona
-    total_urbano = 0
-    total_rural = 0
-    
-    for responsable in responsables:
-        mascotas_responsable = responsable.mascotas.all()
-        for mascota in mascotas_responsable:
-            # Mapear zona del responsable a urbano/rural
-            if responsable.zona == 'barrio':
-                total_urbano += 1
-            elif responsable.zona == 'vereda':
-                total_rural += 1
-            elif responsable.zona == 'centro poblado':
-                # Centro poblado puede ser urbano o rural, por defecto urbano
-                total_urbano += 1
-            else:
-                # Fallback: usar el valor de la planilla si la zona del responsable no está definida
-                if responsable.planilla.urbano_rural == 'urbano':
-                    total_urbano += 1
-                else:
-                    total_rural += 1
-    
-    # Calcular porcentajes
-    total_mascotas_count = mascotas.count()
-    if total_mascotas_count > 0:
-        porcentaje_urbano = round((total_urbano / total_mascotas_count) * 100, 1)
-        porcentaje_rural = round((total_rural / total_mascotas_count) * 100, 1)
+
+    # --- Estadísticas de mascotas (una sola query) ---
+    zona_stats = (
+        Mascota.objects
+        .select_related('responsable__planilla')
+        .aggregate(
+            total_mascotas=Count('id'),
+            # Zona urbana:
+            # - responsable.zona en ['barrio', 'centro poblado']
+            # - o responsables con otras zonas, pero planilla.urbano_rural = 'urbano'
+            total_urbano=Count(
+                Case(
+                    When(responsable__zona__in=['barrio', 'centro poblado'], then=1),
+                    When(
+                        ~Q(responsable__zona__in=['barrio', 'vereda', 'centro poblado']) &
+                        Q(responsable__planilla__urbano_rural='urbano'),
+                        then=1
+                    ),
+                    output_field=IntegerField(),
+                )
+            ),
+            # Zona rural:
+            # - responsable.zona = 'vereda'
+            # - o responsables con otras zonas, pero planilla.urbano_rural = 'rural'
+            total_rural=Count(
+                Case(
+                    When(responsable__zona='vereda', then=1),
+                    When(
+                        ~Q(responsable__zona__in=['barrio', 'vereda', 'centro poblado']) &
+                        Q(responsable__planilla__urbano_rural='rural'),
+                        then=1
+                    ),
+                    output_field=IntegerField(),
+                )
+            ),
+            mascotas_con_tarjeta=Count('id', filter=Q(antecedente_vacunal=True)),
+        )
+    )
+
+    total_mascotas = zona_stats['total_mascotas'] or 0
+    total_urbano = zona_stats['total_urbano'] or 0
+    total_rural = zona_stats['total_rural'] or 0
+    mascotas_con_tarjeta = zona_stats['mascotas_con_tarjeta'] or 0
+
+    if total_mascotas > 0:
+        porcentaje_urbano = round(total_urbano * 100 / total_mascotas, 1)
+        porcentaje_rural = round(total_rural * 100 / total_mascotas, 1)
     else:
         porcentaje_urbano = 0
         porcentaje_rural = 0
-    
-    # Obtener todos los usuarios por tipo con sus relaciones
-    vacunadores = Veterinario.objects.filter(tipo_usuario='vacunador').prefetch_related(
-        'planillas',  # Planillas como vacunador principal
-        'planillas_como_vacunador_adicional',  # Planillas como vacunador adicional
-        'responsables_creados',
-        'mascotas_creadas'
-    ).order_by('username')
-    
-    tecnicos = Veterinario.objects.filter(tipo_usuario='tecnico').prefetch_related(
-        'planillas_asignadas',  # Planillas como técnico principal
-        'planillas_como_tecnico_adicional'  # Planillas como técnico adicional
-    ).order_by('username')
-    
-    administradores = Veterinario.objects.filter(tipo_usuario='administrador').order_by('username')
-    
-    # Responsables recientes con información del vacunador
-    responsables_recientes = responsables[:10]  # Últimos 10 responsables
 
-    # Obtener municipios únicos para el selector (administrador ve todos)
-    municipios_unicos = list(planillas.values_list('municipio', flat=True).distinct().order_by('municipio'))
+    # --- QuerySets principales optimizados ---
+    planillas = (
+        Planilla.objects
+        .select_related('assigned_to', 'tecnico_asignado')
+        .prefetch_related('responsables')
+        .order_by('municipio', 'nombre')
+    )
+
+    responsables = (
+        Responsable.objects
+        .select_related('created_by', 'planilla')
+        .prefetch_related('mascotas')
+        .order_by('-creado')
+    )
+
+    responsables_recientes = responsables[:10]
+
+    municipios_unicos = (
+        planillas.values_list('municipio', flat=True)
+        .distinct()
+        .order_by('municipio')
+    )
+
+    # --- Usuarios por tipo (ya con prefetch donde importa) ---
+    vacunadores = (
+        Veterinario.objects
+        .filter(tipo_usuario='vacunador')
+        .prefetch_related(
+            'planillas',
+            'planillas_como_vacunador_adicional',
+            'responsables_creados',
+            'mascotas_creadas',
+        )
+        .order_by('username')
+    )
+
+    tecnicos = (
+        Veterinario.objects
+        .filter(tipo_usuario='tecnico')
+        .prefetch_related(
+            'planillas_asignadas',
+            'planillas_como_tecnico_adicional',
+        )
+        .order_by('username')
+    )
+
+    administradores = (
+        Veterinario.objects
+        .filter(tipo_usuario='administrador')
+        .order_by('username')
+    )
 
     context = {
         'user_type': 'Administrador',
@@ -917,8 +970,8 @@ def dashboard_administrador(request):
         'municipios_unicos': municipios_unicos,
         'total_planillas': planillas.count(),
         'total_responsables': responsables.count(),
-        'total_mascotas': mascotas.count(),
-        'mascotas_con_tarjeta': mascotas.filter(antecedente_vacunal=True).count(),
+        'total_mascotas': total_mascotas,
+        'mascotas_con_tarjeta': mascotas_con_tarjeta,
         'total_urbano': total_urbano,
         'total_rural': total_rural,
         'porcentaje_urbano': porcentaje_urbano,
@@ -933,7 +986,6 @@ def dashboard_administrador(request):
     }
 
     return render(request, 'api/dashboard_usuario.html', context)
-
 
 @login_required
 def dashboard_principal(request):
