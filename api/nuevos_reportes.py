@@ -25,14 +25,33 @@ def reporte_municipio_por_dia_pdf(request):
     Muestra todos los registros agrupados por municipio y luego por día
     """
     user = request.user
-    if user.tipo_usuario != 'administrador':
+    if user.tipo_usuario not in ['administrador', 'tecnico']:
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('login')
 
+    # Obtener el parámetro de municipio (si existe)
+    municipio_filtro = request.GET.get('municipio', '').strip()
+
     # Obtener todas las mascotas con sus relaciones
-    mascotas = Mascota.objects.select_related(
+    mascotas_query = Mascota.objects.select_related(
         'responsable__planilla', 'created_by'
-    ).order_by('responsable__planilla__municipio', 'creado')
+    )
+
+    # Filtrar según el tipo de usuario
+    if user.tipo_usuario == 'tecnico':
+        # Técnico: solo ve mascotas de sus planillas asignadas
+        mascotas_query = mascotas_query.filter(
+            Q(responsable__planilla__tecnico_asignado=user) |
+            Q(responsable__planilla__tecnicos_adicionales=user)
+        ).distinct()
+
+    # Filtrar por municipio si se especifica
+    if municipio_filtro:
+        mascotas_query = mascotas_query.filter(
+            responsable__planilla__municipio=municipio_filtro
+        )
+
+    mascotas = mascotas_query.order_by('responsable__planilla__municipio', 'creado')
 
     # Agrupar por municipio y luego por día
     data_por_municipio = defaultdict(lambda: defaultdict(list))
@@ -261,14 +280,33 @@ def reporte_dia_por_municipio_pdf(request):
     Muestra todos los registros agrupados por día y luego por municipio
     """
     user = request.user
-    if user.tipo_usuario != 'administrador':
+    if user.tipo_usuario not in ['administrador', 'tecnico']:
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('login')
 
+    # Obtener el parámetro de municipio (si existe)
+    municipio_filtro = request.GET.get('municipio', '').strip()
+
     # Obtener todas las mascotas con sus relaciones
-    mascotas = Mascota.objects.select_related(
+    mascotas_query = Mascota.objects.select_related(
         'responsable__planilla', 'created_by'
-    ).order_by('creado', 'responsable__planilla__municipio')
+    )
+
+    # Filtrar según el tipo de usuario
+    if user.tipo_usuario == 'tecnico':
+        # Técnico: solo ve mascotas de sus planillas asignadas
+        mascotas_query = mascotas_query.filter(
+            Q(responsable__planilla__tecnico_asignado=user) |
+            Q(responsable__planilla__tecnicos_adicionales=user)
+        ).distinct()
+
+    # Filtrar por municipio si se especifica
+    if municipio_filtro:
+        mascotas_query = mascotas_query.filter(
+            responsable__planilla__municipio=municipio_filtro
+        )
+
+    mascotas = mascotas_query.order_by('creado', 'responsable__planilla__municipio')
 
     # Agrupar por día y luego por municipio
     data_por_dia = defaultdict(lambda: defaultdict(list))
@@ -497,7 +535,7 @@ def reporte_estadistico_rango_fechas_pdf(request):
     Muestra totales de perros/gatos urbano/rural por municipio en un rango de fechas
     """
     user = request.user
-    if user.tipo_usuario != 'administrador':
+    if user.tipo_usuario not in ['administrador', 'tecnico']:
         messages.error(request, 'No tienes permisos para acceder a esta sección.')
         return redirect('login')
 
@@ -522,6 +560,14 @@ def reporte_estadistico_rango_fechas_pdf(request):
 
     # Filtrar mascotas por rango de fechas (si se especifican)
     mascotas_query = Mascota.objects.select_related('responsable__planilla')
+
+    # Filtrar según el tipo de usuario
+    if user.tipo_usuario == 'tecnico':
+        # Técnico: solo ve mascotas de sus planillas asignadas
+        mascotas_query = mascotas_query.filter(
+            Q(responsable__planilla__tecnico_asignado=user) |
+            Q(responsable__planilla__tecnicos_adicionales=user)
+        ).distinct()
 
     if fecha_inicio and fecha_fin:
         # Si se especifican ambas fechas

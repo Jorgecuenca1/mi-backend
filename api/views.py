@@ -2807,8 +2807,25 @@ def imprimir_planilla_municipio_pdf(request):
                             )
                             elements.append(info_pagina)
 
-    # Pie de página general
+    # Pie de página general con total de registros
+    total_mascotas = mascotas.count()
     elements.append(Spacer(1, 20))
+
+    # Total de registros en el reporte
+    total_style = ParagraphStyle(
+        'TotalStyle',
+        parent=styles['Normal'],
+        fontSize=12,
+        textColor=colors.darkblue,
+        spaceAfter=10,
+        alignment=1,
+        fontName='Helvetica-Bold'
+    )
+    total_text = f"<b>TOTAL DE REGISTROS EN ESTE REPORTE: {total_mascotas} mascotas</b>"
+    total_para = Paragraph(total_text, total_style)
+    elements.append(total_para)
+    elements.append(Spacer(1, 10))
+
     footer_text = f"Reporte generado el {datetime.now().strftime('%d/%m/%Y %H:%M')} - Sistema VetControl"
     footer = Paragraph(footer_text, subtitle_style)
     elements.append(footer)
