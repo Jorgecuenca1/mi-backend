@@ -2855,5 +2855,6 @@ def imprimir_planilla_municipio_pdf(request):
 from .nuevos_reportes import (
     reporte_municipio_por_dia_pdf,
     reporte_dia_por_municipio_pdf,
-    reporte_estadistico_rango_fechas_pdf
+    reporte_estadistico_rango_fechas_pdf,
+    reporte_listado_lugares_pdf
 )

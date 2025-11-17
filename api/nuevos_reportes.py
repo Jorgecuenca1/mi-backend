@@ -741,3 +741,274 @@ def reporte_estadistico_rango_fechas_pdf(request):
     response['Content-Disposition'] = f'attachment; filename="reporte_estadistico_{fecha_inicio.strftime("%Y%m%d")}_{fecha_fin.strftime("%Y%m%d")}.pdf"'
     response.write(pdf)
     return response
+
+
+@login_required
+def reporte_listado_lugares_pdf(request):
+    """
+    Reporte: Listado de Lugares (Veredas, Barrios, Centros Poblados)
+    Muestra todos los lugares con la cantidad de mascotas vacunadas en cada uno
+    Disponible para técnicos y administradores
+    """
+    user = request.user
+    if user.tipo_usuario not in ['administrador', 'tecnico']:
+        messages.error(request, 'No tienes permisos para acceder a esta sección.')
+        return redirect('login')
+
+    # Obtener parámetro de municipio
+    municipio_filtro = request.GET.get('municipio', '').strip()
+
+    # Obtener planillas según el rol del usuario
+    if user.tipo_usuario == 'administrador':
+        planillas = Planilla.objects.all()
+    else:  # tecnico
+        planillas = Planilla.objects.filter(
+            Q(tecnico_asignado=user) |
+            Q(tecnicos_adicionales=user)
+        ).distinct()
+
+    # Filtrar por municipio si se proporciona
+    if municipio_filtro:
+        planillas = planillas.filter(municipio__icontains=municipio_filtro)
+
+    # Obtener responsables de las planillas
+    responsables = Responsable.objects.filter(
+        planilla__in=planillas
+    ).select_related('planilla').prefetch_related('mascotas')
+
+    # Estructura: {municipio: {nombre_zona: cantidad}}
+    datos_por_municipio = defaultdict(lambda: defaultdict(int))
+
+    # Procesar cada responsable y contar mascotas por lugar
+    for responsable in responsables:
+        municipio = responsable.planilla.municipio
+        nombre_zona = responsable.nombre_zona or responsable.zona or 'Sin especificar'
+        cantidad_mascotas = responsable.mascotas.count()
+        datos_por_municipio[municipio][nombre_zona] += cantidad_mascotas
+
+    # Crear PDF
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Título
+    titulo_texto = f'Listado de Lugares - {municipio_filtro if municipio_filtro else "Todos los Municipios"}'
+    titulo = Paragraph(titulo_texto, ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        textColor=colors.HexColor('#2c3e50'),
+        spaceAfter=12,
+        alignment=1
+    ))
+    elements.append(titulo)
+
+    # Información del reporte
+    fecha_actual = datetime.now().strftime("%d/%m/%Y %H:%M")
+    info = Paragraph(
+        f'Generado: {fecha_actual} | Usuario: {user.username}',
+        ParagraphStyle(
+            'Info',
+            parent=styles['Normal'],
+            fontSize=9,
+            textColor=colors.grey,
+            alignment=1
+        )
+    )
+    elements.append(info)
+    elements.append(Spacer(1, 0.3*inch))
+
+    # Si no hay datos
+    if not datos_por_municipio:
+        mensaje = Paragraph(
+            'No se encontraron datos para los criterios seleccionados.',
+            ParagraphStyle(
+                'NoData',
+                parent=styles['Normal'],
+                fontSize=12,
+                textColor=colors.red,
+                alignment=1
+            )
+        )
+        elements.append(mensaje)
+        doc.build(elements)
+        pdf = buffer.getvalue()
+        buffer.close()
+
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="listado_lugares_{municipio_filtro or "todos"}.pdf"'
+        response.write(pdf)
+        return response
+
+    # Procesar cada municipio
+    for municipio in sorted(datos_por_municipio.keys()):
+        # Título del municipio
+        titulo_municipio = Paragraph(
+            f'<b>Municipio: {municipio}</b>',
+            ParagraphStyle(
+                'MunicipioTitle',
+                parent=styles['Heading2'],
+                fontSize=14,
+                textColor=colors.HexColor('#34495e'),
+                spaceAfter=10
+            )
+        )
+        elements.append(titulo_municipio)
+
+        # Preparar datos de la tabla
+        lugares_data = datos_por_municipio[municipio]
+
+        # Crear lista de datos ordenada
+        lugares_ordenados = sorted(lugares_data.items(), key=lambda x: x[1], reverse=True)
+
+        # Calcular totales
+        total_mascotas = sum(lugares_data.values())
+        total_lugares = len(lugares_data)
+
+        # Construir tabla
+        table_data = [
+            ['Lugar', 'Tipo', 'Mascotas Vacunadas']
+        ]
+
+        for nombre_zona, cantidad in lugares_ordenados:
+            # Determinar tipo de lugar
+            nombre_lower = nombre_zona.lower()
+            if any(x in nombre_lower for x in ['vereda', 'vda', 'v.']):
+                tipo = 'Vereda'
+            elif any(x in nombre_lower for x in ['barrio', 'br', 'b.']):
+                tipo = 'Barrio'
+            elif any(x in nombre_lower for x in ['centro poblado', 'cp', 'c.p']):
+                tipo = 'Centro Poblado'
+            else:
+                tipo = 'Otro'
+
+            table_data.append([
+                nombre_zona,
+                tipo,
+                str(cantidad)
+            ])
+
+        # Agregar fila de totales
+        table_data.append([
+            f'TOTAL: {total_lugares} lugares',
+            '',
+            f'{total_mascotas}'
+        ])
+
+        # Crear tabla
+        table = Table(table_data, colWidths=[3.5*inch, 1.5*inch, 1.5*inch])
+        table.setStyle(TableStyle([
+            # Encabezado
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3498db')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+
+            # Contenido
+            ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -2), 9),
+            ('ALIGN', (0, 1), (0, -2), 'LEFT'),
+            ('ALIGN', (1, 1), (1, -2), 'CENTER'),
+            ('ALIGN', (2, 1), (-1, -2), 'CENTER'),
+            ('GRID', (0, 0), (-1, -2), 0.5, colors.grey),
+
+            # Fila de totales
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#ecf0f1')),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, -1), (-1, -1), 10),
+            ('ALIGN', (0, -1), (-1, -1), 'CENTER'),
+            ('GRID', (0, -1), (-1, -1), 1, colors.HexColor('#3498db')),
+
+            # Alternancia de colores
+            ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#f8f9fa')])
+        ]))
+
+        elements.append(table)
+        elements.append(Spacer(1, 0.4*inch))
+
+    # Si hay múltiples municipios, agregar resumen general
+    if len(datos_por_municipio) > 1:
+        elements.append(PageBreak())
+
+        # Título resumen
+        titulo_resumen = Paragraph(
+            '<b>Resumen General</b>',
+            ParagraphStyle(
+                'ResumenTitle',
+                parent=styles['Heading2'],
+                fontSize=14,
+                textColor=colors.HexColor('#34495e'),
+                spaceAfter=10
+            )
+        )
+        elements.append(titulo_resumen)
+
+        # Datos del resumen
+        resumen_data = [['Municipio', 'Total Lugares', 'Total Mascotas']]
+
+        total_general_lugares = 0
+        total_general_mascotas = 0
+
+        for municipio in sorted(datos_por_municipio.keys()):
+            lugares = len(datos_por_municipio[municipio])
+            mascotas = sum(datos_por_municipio[municipio].values())
+            total_general_lugares += lugares
+            total_general_mascotas += mascotas
+
+            resumen_data.append([
+                municipio,
+                str(lugares),
+                str(mascotas)
+            ])
+
+        # Totales generales
+        resumen_data.append([
+            'TOTAL GENERAL',
+            str(total_general_lugares),
+            str(total_general_mascotas)
+        ])
+
+        # Crear tabla de resumen
+        resumen_table = Table(resumen_data, colWidths=[3*inch, 1.5*inch, 1.5*inch])
+        resumen_table.setStyle(TableStyle([
+            # Encabezado
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2ecc71')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+
+            # Contenido
+            ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -2), 10),
+            ('ALIGN', (0, 1), (0, -2), 'LEFT'),
+            ('ALIGN', (1, 1), (-1, -2), 'CENTER'),
+            ('GRID', (0, 0), (-1, -2), 0.5, colors.grey),
+
+            # Fila de totales
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#2ecc71')),
+            ('TEXTCOLOR', (0, -1), (-1, -1), colors.whitesmoke),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, -1), (-1, -1), 11),
+            ('ALIGN', (0, -1), (-1, -1), 'CENTER'),
+            ('GRID', (0, -1), (-1, -1), 1, colors.HexColor('#27ae60')),
+
+            # Alternancia de colores
+            ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#e8f8f5')])
+        ]))
+
+        elements.append(resumen_table)
+
+    # Construir PDF
+    doc.build(elements)
+    pdf = buffer.getvalue()
+    buffer.close()
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="listado_lugares_{municipio_filtro or "todos"}_{user.username}.pdf"'
+    response.write(pdf)
+    return response
