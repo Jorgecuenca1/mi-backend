@@ -782,9 +782,22 @@ def reporte_listado_lugares_pdf(request):
     # Procesar cada responsable y contar mascotas por lugar
     for responsable in responsables:
         municipio = responsable.planilla.municipio
-        nombre_zona = responsable.nombre_zona or responsable.zona or 'Sin especificar'
+
+        # Manejar zonas vacías - priorizar nombre_zona sobre zona
+        nombre_zona = None
+        if responsable.nombre_zona and responsable.nombre_zona.strip():
+            nombre_zona = responsable.nombre_zona.strip()
+        elif responsable.zona and responsable.zona.strip():
+            nombre_zona = responsable.zona.strip()
+        else:
+            nombre_zona = 'Sin especificar'
+
+        # Contar todas las mascotas del responsable
         cantidad_mascotas = responsable.mascotas.count()
-        datos_por_municipio[municipio][nombre_zona] += cantidad_mascotas
+
+        # Solo agregar si hay mascotas
+        if cantidad_mascotas > 0:
+            datos_por_municipio[municipio][nombre_zona] += cantidad_mascotas
 
     # Crear PDF
     buffer = BytesIO()
@@ -1011,4 +1024,239 @@ def reporte_listado_lugares_pdf(request):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="listado_lugares_{municipio_filtro or "todos"}_{user.username}.pdf"'
     response.write(pdf)
+    return response
+
+
+@login_required
+def reporte_listado_lugares_excel(request):
+    """
+    Reporte: Listado de Lugares en Excel
+    Exporta el listado de lugares con cantidad de mascotas vacunadas a Excel
+    Disponible para técnicos y administradores
+    """
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    user = request.user
+    if user.tipo_usuario not in ['administrador', 'tecnico']:
+        messages.error(request, 'No tienes permisos para acceder a esta sección.')
+        return redirect('login')
+
+    # Obtener parámetro de municipio
+    municipio_filtro = request.GET.get('municipio', '').strip()
+
+    # Obtener planillas según el rol del usuario
+    if user.tipo_usuario == 'administrador':
+        planillas = Planilla.objects.all()
+    else:  # tecnico
+        planillas = Planilla.objects.filter(
+            Q(tecnico_asignado=user) |
+            Q(tecnicos_adicionales=user)
+        ).distinct()
+
+    # Filtrar por municipio si se proporciona
+    if municipio_filtro:
+        planillas = planillas.filter(municipio__icontains=municipio_filtro)
+
+    # Obtener responsables de las planillas
+    responsables = Responsable.objects.filter(
+        planilla__in=planillas
+    ).select_related('planilla').prefetch_related('mascotas')
+
+    # Estructura: {municipio: {nombre_zona: cantidad}}
+    datos_por_municipio = defaultdict(lambda: defaultdict(int))
+
+    # Procesar cada responsable y contar mascotas por lugar
+    for responsable in responsables:
+        municipio = responsable.planilla.municipio
+
+        # Manejar zonas vacías - priorizar nombre_zona sobre zona
+        nombre_zona = None
+        if responsable.nombre_zona and responsable.nombre_zona.strip():
+            nombre_zona = responsable.nombre_zona.strip()
+        elif responsable.zona and responsable.zona.strip():
+            nombre_zona = responsable.zona.strip()
+        else:
+            nombre_zona = 'Sin especificar'
+
+        # Contar todas las mascotas del responsable
+        cantidad_mascotas = responsable.mascotas.count()
+
+        # Solo agregar si hay mascotas
+        if cantidad_mascotas > 0:
+            datos_por_municipio[municipio][nombre_zona] += cantidad_mascotas
+
+    # Crear workbook de Excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Listado de Lugares"
+
+    # Estilos
+    header_fill = PatternFill(start_color="3498DB", end_color="3498DB", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=12)
+    header_alignment = Alignment(horizontal="center", vertical="center")
+
+    municipio_fill = PatternFill(start_color="34495E", end_color="34495E", fill_type="solid")
+    municipio_font = Font(bold=True, color="FFFFFF", size=11)
+
+    total_fill = PatternFill(start_color="ECF0F1", end_color="ECF0F1", fill_type="solid")
+    total_font = Font(bold=True, size=10)
+
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    # Título
+    ws.merge_cells('A1:C1')
+    titulo_cell = ws['A1']
+    titulo_cell.value = f'Listado de Lugares - {municipio_filtro if municipio_filtro else "Todos los Municipios"}'
+    titulo_cell.font = Font(bold=True, size=14)
+    titulo_cell.alignment = Alignment(horizontal="center")
+
+    # Información
+    ws.merge_cells('A2:C2')
+    info_cell = ws['A2']
+    info_cell.value = f'Generado: {datetime.now().strftime("%d/%m/%Y %H:%M")} | Usuario: {user.username}'
+    info_cell.alignment = Alignment(horizontal="center")
+
+    current_row = 4
+
+    # Si no hay datos
+    if not datos_por_municipio:
+        ws['A4'] = 'No se encontraron datos para los criterios seleccionados.'
+        ws['A4'].font = Font(color="FF0000", size=12)
+        ws['A4'].alignment = Alignment(horizontal="center")
+    else:
+        # Procesar cada municipio
+        for municipio in sorted(datos_por_municipio.keys()):
+            # Título del municipio
+            ws.merge_cells(f'A{current_row}:C{current_row}')
+            municipio_cell = ws[f'A{current_row}']
+            municipio_cell.value = f'Municipio: {municipio}'
+            municipio_cell.fill = municipio_fill
+            municipio_cell.font = municipio_font
+            municipio_cell.alignment = Alignment(horizontal="center")
+            current_row += 1
+
+            # Encabezados de columnas
+            headers = ['Lugar', 'Tipo', 'Mascotas Vacunadas']
+            for col_num, header in enumerate(headers, 1):
+                cell = ws.cell(row=current_row, column=col_num)
+                cell.value = header
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = header_alignment
+                cell.border = border
+            current_row += 1
+
+            # Datos de lugares
+            lugares_data = datos_por_municipio[municipio]
+            lugares_ordenados = sorted(lugares_data.items(), key=lambda x: x[1], reverse=True)
+
+            total_mascotas = 0
+            for nombre_zona, cantidad in lugares_ordenados:
+                # Determinar tipo de lugar
+                nombre_lower = nombre_zona.lower()
+                if any(x in nombre_lower for x in ['vereda', 'vda', 'v.']):
+                    tipo = 'Vereda'
+                elif any(x in nombre_lower for x in ['barrio', 'br', 'b.']):
+                    tipo = 'Barrio'
+                elif any(x in nombre_lower for x in ['centro poblado', 'cp', 'c.p']):
+                    tipo = 'Centro Poblado'
+                else:
+                    tipo = 'Otro'
+
+                # Escribir fila
+                ws.cell(row=current_row, column=1, value=nombre_zona).border = border
+                ws.cell(row=current_row, column=2, value=tipo).alignment = Alignment(horizontal="center")
+                ws.cell(row=current_row, column=2).border = border
+                ws.cell(row=current_row, column=3, value=cantidad).alignment = Alignment(horizontal="center")
+                ws.cell(row=current_row, column=3).border = border
+
+                total_mascotas += cantidad
+                current_row += 1
+
+            # Fila de totales
+            ws.cell(row=current_row, column=1, value=f'TOTAL: {len(lugares_ordenados)} lugares').fill = total_fill
+            ws.cell(row=current_row, column=1).font = total_font
+            ws.cell(row=current_row, column=1).border = border
+            ws.cell(row=current_row, column=2).fill = total_fill
+            ws.cell(row=current_row, column=2).border = border
+            ws.cell(row=current_row, column=3, value=total_mascotas).fill = total_fill
+            ws.cell(row=current_row, column=3).font = total_font
+            ws.cell(row=current_row, column=3).alignment = Alignment(horizontal="center")
+            ws.cell(row=current_row, column=3).border = border
+
+            current_row += 3  # Espacio entre municipios
+
+        # Si hay múltiples municipios, agregar resumen
+        if len(datos_por_municipio) > 1:
+            current_row += 1
+            ws.merge_cells(f'A{current_row}:C{current_row}')
+            resumen_cell = ws[f'A{current_row}']
+            resumen_cell.value = 'RESUMEN GENERAL'
+            resumen_cell.font = Font(bold=True, size=13)
+            resumen_cell.alignment = Alignment(horizontal="center")
+            current_row += 1
+
+            # Encabezados resumen
+            headers_resumen = ['Municipio', 'Total Lugares', 'Total Mascotas']
+            for col_num, header in enumerate(headers_resumen, 1):
+                cell = ws.cell(row=current_row, column=col_num)
+                cell.value = header
+                cell.fill = PatternFill(start_color="2ECC71", end_color="2ECC71", fill_type="solid")
+                cell.font = Font(bold=True, color="FFFFFF")
+                cell.alignment = header_alignment
+                cell.border = border
+            current_row += 1
+
+            # Datos resumen
+            total_general_lugares = 0
+            total_general_mascotas = 0
+
+            for municipio in sorted(datos_por_municipio.keys()):
+                lugares = len(datos_por_municipio[municipio])
+                mascotas = sum(datos_por_municipio[municipio].values())
+                total_general_lugares += lugares
+                total_general_mascotas += mascotas
+
+                ws.cell(row=current_row, column=1, value=municipio).border = border
+                ws.cell(row=current_row, column=2, value=lugares).alignment = Alignment(horizontal="center")
+                ws.cell(row=current_row, column=2).border = border
+                ws.cell(row=current_row, column=3, value=mascotas).alignment = Alignment(horizontal="center")
+                ws.cell(row=current_row, column=3).border = border
+                current_row += 1
+
+            # Total general
+            ws.cell(row=current_row, column=1, value='TOTAL GENERAL').fill = PatternFill(start_color="2ECC71", end_color="2ECC71", fill_type="solid")
+            ws.cell(row=current_row, column=1).font = Font(bold=True, color="FFFFFF")
+            ws.cell(row=current_row, column=1).border = border
+            ws.cell(row=current_row, column=2, value=total_general_lugares).fill = PatternFill(start_color="2ECC71", end_color="2ECC71", fill_type="solid")
+            ws.cell(row=current_row, column=2).font = Font(bold=True, color="FFFFFF")
+            ws.cell(row=current_row, column=2).alignment = Alignment(horizontal="center")
+            ws.cell(row=current_row, column=2).border = border
+            ws.cell(row=current_row, column=3, value=total_general_mascotas).fill = PatternFill(start_color="2ECC71", end_color="2ECC71", fill_type="solid")
+            ws.cell(row=current_row, column=3).font = Font(bold=True, color="FFFFFF")
+            ws.cell(row=current_row, column=3).alignment = Alignment(horizontal="center")
+            ws.cell(row=current_row, column=3).border = border
+
+    # Ajustar ancho de columnas
+    ws.column_dimensions['A'].width = 40
+    ws.column_dimensions['B'].width = 20
+    ws.column_dimensions['C'].width = 20
+
+    # Guardar en buffer
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="listado_lugares_{municipio_filtro or "todos"}_{user.username}.xlsx"'
     return response
