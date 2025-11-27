@@ -1395,7 +1395,7 @@
                 </div>
 
                 <!-- Botones -->
-                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; flex-wrap: wrap;">
                     <button type="button" onclick="cerrarModalListadoLugares()" style="
                         background: #e2e8f0;
                         color: #2d3748;
@@ -1420,7 +1420,21 @@
                         box-shadow: 0 4px 15px rgba(255, 167, 81, 0.3);
                     " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(255, 167, 81, 0.4)'"
                        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(255, 167, 81, 0.3)'">
-                        📍 Generar Reporte
+                        📄 PDF
+                    </button>
+                    <button type="button" onclick="generarListadoLugaresExcel()" style="
+                        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+                        color: white;
+                        padding: 0.75rem 1.5rem;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        transition: transform 0.3s, box-shadow 0.3s;
+                        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(46, 204, 113, 0.4)'"
+                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(46, 204, 113, 0.3)'">
+                        📊 Excel
                     </button>
                 </div>
             </form>
@@ -1788,6 +1802,18 @@
             const municipio = document.getElementById('municipio-lugares').value;
 
             let url = '{% url "reporte_listado_lugares" %}';
+            if (municipio) {
+                url += '?municipio=' + encodeURIComponent(municipio);
+            }
+
+            window.open(url, '_blank');
+            cerrarModalListadoLugares();
+        }
+
+        function generarListadoLugaresExcel() {
+            const municipio = document.getElementById('municipio-lugares').value;
+
+            let url = '{% url "reporte_listado_lugares_excel" %}';
             if (municipio) {
                 url += '?municipio=' + encodeURIComponent(municipio);
             }

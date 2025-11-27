@@ -374,8 +374,8 @@ def reportes_view(request):
         total_mascotas=Count('id'),
         con_tarjeta_previa=Count('id', filter=Q(antecedente_vacunal=True)),
         sin_tarjeta_previa=Count('id', filter=Q(antecedente_vacunal=False)),
-        zona_urbana=Count('id', filter=Q(responsable__zona='barrio') | Q(responsable__zona='centro poblado')),
-        zona_rural=Count('id', filter=Q(responsable__zona='vereda')),
+        zona_urbana=Count('id', filter=Q(responsable__zona__iexact='barrio') | Q(responsable__zona__iexact='centro poblado')),
+        zona_rural=Count('id', filter=Q(responsable__zona__iexact='vereda')),
         perros=Count('id', filter=Q(tipo='perro')),
         gatos=Count('id', filter=Q(tipo='gato')),
     ).order_by('municipio')
@@ -826,11 +826,11 @@ def dashboard_administrador(request):
     # Usar agregaciones SQL en lugar de loops Python - MUCHO MÁS RÁPIDO
     # Contar mascotas urbanas (zona barrio o centro_poblado)
     total_urbano = Mascota.objects.filter(
-        Q(responsable__zona='barrio') | Q(responsable__zona='centro poblado')
+        Q(responsable__zona__iexact='barrio') | Q(responsable__zona__iexact='centro poblado')
     ).count()
 
     # Contar mascotas rurales (zona vereda)
-    total_rural = Mascota.objects.filter(responsable__zona='vereda').count()
+    total_rural = Mascota.objects.filter(responsable__zona__iexact='vereda').count()
 
     # Estadísticas generales usando queries optimizadas
     total_planillas = Planilla.objects.count()
@@ -944,6 +944,20 @@ def importar_responsables_mascotas(request):
             import openpyxl
             from decimal import Decimal, InvalidOperation
 
+            # Función para normalizar zona a minúsculas
+            def normalizar_zona(zona_raw):
+                if not zona_raw:
+                    return 'Sin especificar'
+                zona = str(zona_raw).strip().lower()
+                # Normalizar variaciones comunes
+                if zona in ['barrio', 'urbano', 'urbana']:
+                    return 'barrio'
+                elif zona in ['vereda', 'rural']:
+                    return 'vereda'
+                elif zona in ['centro poblado', 'centro_poblado', 'centropoblado']:
+                    return 'centro poblado'
+                return zona
+
             # Procesar archivo Excel
             if extension in ['xlsx', 'xls']:
                 wb = openpyxl.load_workbook(archivo)
@@ -989,7 +1003,7 @@ def importar_responsables_mascotas(request):
                             'nombre': str(datos.get('nombre_responsable', '')).strip(),
                             'telefono': str(datos.get('telefono', '')).strip(),
                             'finca': str(datos.get('finca', '')).strip(),
-                            'zona': str(datos.get('zona', 'Sin especificar')).strip(),
+                            'zona': normalizar_zona(datos.get('zona')),
                             'nombre_zona': str(datos.get('nombre_zona', 'Sin especificar')).strip(),
                             'lote_vacuna': str(lote_vacuna).strip() if lote_vacuna else 'Sin especificar',
                             'vacunador_id': datos.get('ID'),  # ID del vacunador
@@ -1060,19 +1074,31 @@ def importar_responsables_mascotas(request):
 
                         # Crear mascotas
                         for mascota_data in datos_responsable['mascotas']:
-                            Mascota.objects.create(
-                                nombre=mascota_data['nombre'],
-                                tipo=mascota_data['tipo'],
-                                raza=mascota_data['raza'],
-                                color=mascota_data['color'],
-                                antecedente_vacunal=mascota_data['antecedente_vacunal'],
-                                esterilizado=mascota_data['esterilizado'],
-                                latitud=mascota_data['latitud'],
-                                longitud=mascota_data['longitud'],
-                                responsable=responsable,
-                                created_by=usuario_creador
-                            )
-                            mascotas_creadas += 1
+                            try:
+                                # Validar coordenadas antes de crear (max 5 dígitos enteros)
+                                lat = mascota_data['latitud']
+                                lon = mascota_data['longitud']
+                                if lat and abs(lat) > 99999:
+                                    lat = None  # Coordenada inválida, ignorar
+                                if lon and abs(lon) > 99999:
+                                    lon = None  # Coordenada inválida, ignorar
+
+                                Mascota.objects.create(
+                                    nombre=mascota_data['nombre'],
+                                    tipo=mascota_data['tipo'],
+                                    raza=mascota_data['raza'],
+                                    color=mascota_data['color'],
+                                    antecedente_vacunal=mascota_data['antecedente_vacunal'],
+                                    esterilizado=mascota_data['esterilizado'],
+                                    latitud=lat,
+                                    longitud=lon,
+                                    responsable=responsable,
+                                    created_by=usuario_creador
+                                )
+                                mascotas_creadas += 1
+                            except Exception as e:
+                                # Si falla la mascota, continuar con las demás
+                                errores.append(f"Error mascota {mascota_data['nombre']}: {str(e)}")
 
                     except Exception as e:
                         errores.append(f"Error al crear responsable {datos_responsable['nombre']}: {str(e)}")
@@ -1122,7 +1148,7 @@ def importar_responsables_mascotas(request):
                             'nombre': str(row.get('nombre_responsable', '')).strip(),
                             'telefono': str(row.get('telefono', '')).strip(),
                             'finca': str(row.get('finca', '')).strip(),
-                            'zona': str(row.get('zona', 'Sin especificar')).strip(),
+                            'zona': normalizar_zona(row.get('zona')),
                             'nombre_zona': str(row.get('nombre_zona', 'Sin especificar')).strip(),
                             'lote_vacuna': str(lote_vacuna).strip() if lote_vacuna else 'Sin especificar',
                             'vacunador_id': row.get('ID'),  # ID del vacunador
@@ -1191,19 +1217,30 @@ def importar_responsables_mascotas(request):
                         responsables_creados += 1
 
                         for mascota_data in datos_responsable['mascotas']:
-                            Mascota.objects.create(
-                                nombre=mascota_data['nombre'],
-                                tipo=mascota_data['tipo'],
-                                raza=mascota_data['raza'],
-                                color=mascota_data['color'],
-                                antecedente_vacunal=mascota_data['antecedente_vacunal'],
-                                esterilizado=mascota_data['esterilizado'],
-                                latitud=mascota_data['latitud'],
-                                longitud=mascota_data['longitud'],
-                                responsable=responsable,
-                                created_by=usuario_creador
-                            )
-                            mascotas_creadas += 1
+                            try:
+                                # Validar coordenadas antes de crear (max 5 dígitos enteros)
+                                lat = mascota_data['latitud']
+                                lon = mascota_data['longitud']
+                                if lat and abs(lat) > 99999:
+                                    lat = None
+                                if lon and abs(lon) > 99999:
+                                    lon = None
+
+                                Mascota.objects.create(
+                                    nombre=mascota_data['nombre'],
+                                    tipo=mascota_data['tipo'],
+                                    raza=mascota_data['raza'],
+                                    color=mascota_data['color'],
+                                    antecedente_vacunal=mascota_data['antecedente_vacunal'],
+                                    esterilizado=mascota_data['esterilizado'],
+                                    latitud=lat,
+                                    longitud=lon,
+                                    responsable=responsable,
+                                    created_by=usuario_creador
+                                )
+                                mascotas_creadas += 1
+                            except Exception as e:
+                                errores.append(f"Error mascota {mascota_data['nombre']}: {str(e)}")
 
                     except Exception as e:
                         errores.append(f"Error al crear responsable {datos_responsable['nombre']}: {str(e)}")
@@ -2856,5 +2893,6 @@ from .nuevos_reportes import (
     reporte_municipio_por_dia_pdf,
     reporte_dia_por_municipio_pdf,
     reporte_estadistico_rango_fechas_pdf,
-    reporte_listado_lugares_pdf
+    reporte_listado_lugares_pdf,
+    reporte_listado_lugares_excel
 )
