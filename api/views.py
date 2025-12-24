@@ -2894,5 +2894,6 @@ from .nuevos_reportes import (
     reporte_dia_por_municipio_pdf,
     reporte_estadistico_rango_fechas_pdf,
     reporte_listado_lugares_pdf,
-    reporte_listado_lugares_excel
+    reporte_listado_lugares_excel,
+    exportar_planillas_completas_excel
 )
