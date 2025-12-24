@@ -1266,13 +1266,10 @@ def reporte_listado_lugares_excel(request):
 def exportar_planillas_completas_excel(request):
     """
     Exporta toda la información de mascotas y responsables a Excel.
-    Cada fila contiene todos los campos de la mascota y su responsable.
-    Permite filtrar por municipio o exportar todos.
-    Solo disponible para administradores.
+    OPTIMIZADO para 80,000+ registros usando write_only mode.
     """
     import openpyxl
-    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-    from openpyxl.utils import get_column_letter
+    from openpyxl import Workbook
 
     user = request.user
     if user.tipo_usuario != 'administrador':
@@ -1282,12 +1279,12 @@ def exportar_planillas_completas_excel(request):
     # Obtener parámetro de municipio
     municipio_filtro = request.GET.get('municipio', '').strip()
 
-    # Obtener mascotas con todas sus relaciones
+    # Query base optimizada - solo campos necesarios
     mascotas_query = Mascota.objects.select_related(
         'responsable__planilla',
         'responsable__created_by',
         'created_by'
-    )
+    ).defer('foto')  # Excluir campo de imagen
 
     # Filtrar por municipio si se especifica
     if municipio_filtro:
@@ -1295,102 +1292,53 @@ def exportar_planillas_completas_excel(request):
             responsable__planilla__municipio=municipio_filtro
         )
 
+    # Contar total
+    total_registros = mascotas_query.count()
+
+    # Crear workbook en modo write_only (mucho más rápido para grandes volúmenes)
+    wb = Workbook(write_only=True)
+    ws = wb.create_sheet("Planillas Completas")
+
+    # Encabezados
+    headers = [
+        'Municipio', 'Urbano/Rural', 'Tipo Zona', 'Nombre Lugar',
+        'Nombre Responsable', 'Teléfono', 'Finca/Predio', 'Lote Vacuna',
+        'Creado por (Resp)', 'Fecha Creación Resp',
+        'Nombre Mascota', 'Tipo', 'Raza', 'Color',
+        'Antecedente Vacunal', 'Esterilizado', 'Latitud', 'Longitud',
+        'Creado por (Mascota)', 'Fecha Creación Mascota'
+    ]
+
+    # Escribir título
+    ws.append([f'Planillas Completas - {municipio_filtro or "Todos los Municipios"}'])
+    ws.append([f'Generado: {datetime.now().strftime("%d/%m/%Y %H:%M")} | Usuario: {user.username} | Total: {total_registros}'])
+    ws.append([])  # Fila vacía
+    ws.append(headers)
+
+    # Procesar en lotes de 1000 para eficiencia
     mascotas = mascotas_query.order_by(
         'responsable__planilla__municipio',
         'responsable__nombre',
         'nombre'
-    )
-
-    # Crear workbook de Excel
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Planillas Completas"
-
-    # Estilos
-    header_fill = PatternFill(start_color="4A90E2", end_color="4A90E2", fill_type="solid")
-    header_font = Font(bold=True, color="FFFFFF", size=10)
-    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-
-    border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
-    )
-
-    # Título
-    titulo_texto = f'Planillas Completas - {municipio_filtro if municipio_filtro else "Todos los Municipios"}'
-    ws.merge_cells('A1:T1')
-    titulo_cell = ws['A1']
-    titulo_cell.value = titulo_texto
-    titulo_cell.font = Font(bold=True, size=14)
-    titulo_cell.alignment = Alignment(horizontal="center")
-
-    # Información
-    ws.merge_cells('A2:T2')
-    info_cell = ws['A2']
-    info_cell.value = f'Generado: {datetime.now().strftime("%d/%m/%Y %H:%M")} | Usuario: {user.username} | Total registros: {mascotas.count()}'
-    info_cell.alignment = Alignment(horizontal="center")
-
-    # Encabezados - Fila 4
-    headers = [
-        # Información de la Planilla
-        'Municipio',
-        'Urbano/Rural',
-        # Información del Responsable
-        'Tipo Zona',
-        'Nombre Lugar',
-        'Nombre Responsable',
-        'Teléfono',
-        'Finca/Predio',
-        'Lote Vacuna',
-        'Creado por (Resp)',
-        'Fecha Creación Resp',
-        # Información de la Mascota
-        'Nombre Mascota',
-        'Tipo',
-        'Raza',
-        'Color',
-        'Antecedente Vacunal',
-        'Esterilizado',
-        'Latitud',
-        'Longitud',
-        'Creado por (Mascota)',
-        'Fecha Creación Mascota'
-    ]
-
-    for col_num, header in enumerate(headers, 1):
-        cell = ws.cell(row=4, column=col_num)
-        cell.value = header
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = header_alignment
-        cell.border = border
-
-    # Datos - Desde fila 5
-    current_row = 5
+    ).iterator(chunk_size=1000)
 
     for mascota in mascotas:
         resp = mascota.responsable
         planilla = resp.planilla if resp else None
 
-        # Escribir datos
-        data = [
-            # Planilla
+        row = [
             planilla.municipio if planilla else '',
             planilla.get_urbano_rural_display() if planilla else '',
-            # Responsable - zona y lugar
-            resp.zona.title() if resp and resp.zona else '',
-            resp.nombre_zona if resp and resp.nombre_zona else '',
+            (resp.zona or '').title() if resp else '',
+            resp.nombre_zona if resp else '',
             resp.nombre if resp else '',
             resp.telefono if resp else '',
             resp.finca if resp else '',
             resp.lote_vacuna if resp else '',
             resp.created_by.username if resp and resp.created_by else '',
             resp.creado.strftime('%d/%m/%Y %H:%M') if resp and resp.creado else '',
-            # Mascota
             mascota.nombre,
-            mascota.get_tipo_display() if hasattr(mascota, 'get_tipo_display') else mascota.tipo,
+            mascota.tipo,
             mascota.raza,
             mascota.color,
             'Sí' if mascota.antecedente_vacunal else 'No',
@@ -1400,49 +1348,7 @@ def exportar_planillas_completas_excel(request):
             mascota.created_by.username if mascota.created_by else '',
             mascota.creado.strftime('%d/%m/%Y %H:%M') if mascota.creado else ''
         ]
-
-        for col_num, value in enumerate(data, 1):
-            cell = ws.cell(row=current_row, column=col_num)
-            cell.value = value
-            cell.border = border
-            # Centrar columnas específicas
-            if col_num in [2, 3, 12, 15, 16]:
-                cell.alignment = Alignment(horizontal="center")
-
-        current_row += 1
-
-    # Ajustar ancho de columnas
-    column_widths = {
-        'A': 20,  # Municipio
-        'B': 12,  # Urbano/Rural
-        'C': 15,  # Tipo Zona
-        'D': 25,  # Nombre Lugar
-        'E': 25,  # Nombre Responsable
-        'F': 15,  # Teléfono
-        'G': 20,  # Finca
-        'H': 15,  # Lote Vacuna
-        'I': 15,  # Creado por Resp
-        'J': 18,  # Fecha Resp
-        'K': 20,  # Nombre Mascota
-        'L': 10,  # Tipo
-        'M': 10,  # Raza
-        'N': 15,  # Color
-        'O': 18,  # Antecedente
-        'P': 12,  # Esterilizado
-        'Q': 15,  # Latitud
-        'R': 15,  # Longitud
-        'S': 15,  # Creado por Mascota
-        'T': 18   # Fecha Mascota
-    }
-
-    for col_letter, width in column_widths.items():
-        ws.column_dimensions[col_letter].width = width
-
-    # Congelar panel (encabezados)
-    ws.freeze_panes = 'A5'
-
-    # Agregar filtros
-    ws.auto_filter.ref = f'A4:T{current_row - 1}'
+        ws.append(row)
 
     # Guardar en buffer
     buffer = BytesIO()
