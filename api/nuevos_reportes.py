@@ -1320,14 +1320,14 @@ def exportar_planillas_completas_excel(request):
 
     # Título
     titulo_texto = f'Planillas Completas - {municipio_filtro if municipio_filtro else "Todos los Municipios"}'
-    ws.merge_cells('A1:V1')
+    ws.merge_cells('A1:T1')
     titulo_cell = ws['A1']
     titulo_cell.value = titulo_texto
     titulo_cell.font = Font(bold=True, size=14)
     titulo_cell.alignment = Alignment(horizontal="center")
 
     # Información
-    ws.merge_cells('A2:V2')
+    ws.merge_cells('A2:T2')
     info_cell = ws['A2']
     info_cell.value = f'Generado: {datetime.now().strftime("%d/%m/%Y %H:%M")} | Usuario: {user.username} | Total registros: {mascotas.count()}'
     info_cell.alignment = Alignment(horizontal="center")
@@ -1337,14 +1337,12 @@ def exportar_planillas_completas_excel(request):
         # Información de la Planilla
         'Municipio',
         'Urbano/Rural',
-        'Centro Poblado/Vereda/Barrio',
-        'Zona Planilla',
         # Información del Responsable
+        'Tipo Zona',
+        'Nombre Lugar',
         'Nombre Responsable',
         'Teléfono',
         'Finca/Predio',
-        'Zona Responsable',
-        'Nombre Zona',
         'Lote Vacuna',
         'Creado por (Resp)',
         'Fecha Creación Resp',
@@ -1381,14 +1379,12 @@ def exportar_planillas_completas_excel(request):
             # Planilla
             planilla.municipio if planilla else '',
             planilla.get_urbano_rural_display() if planilla else '',
-            planilla.centro_poblado_vereda_barrio if planilla else '',
-            planilla.zona if planilla else '',
-            # Responsable
+            # Responsable - zona y lugar
+            resp.zona.title() if resp and resp.zona else '',
+            resp.nombre_zona if resp and resp.nombre_zona else '',
             resp.nombre if resp else '',
             resp.telefono if resp else '',
             resp.finca if resp else '',
-            resp.zona if resp else '',
-            resp.nombre_zona if resp else '',
             resp.lote_vacuna if resp else '',
             resp.created_by.username if resp and resp.created_by else '',
             resp.creado.strftime('%d/%m/%Y %H:%M') if resp and resp.creado else '',
@@ -1409,8 +1405,8 @@ def exportar_planillas_completas_excel(request):
             cell = ws.cell(row=current_row, column=col_num)
             cell.value = value
             cell.border = border
-            # Centrar columnas numéricas y de fecha
-            if col_num in [2, 14, 17, 18]:
+            # Centrar columnas específicas
+            if col_num in [2, 3, 12, 15, 16]:
                 cell.alignment = Alignment(horizontal="center")
 
         current_row += 1
@@ -1419,26 +1415,24 @@ def exportar_planillas_completas_excel(request):
     column_widths = {
         'A': 20,  # Municipio
         'B': 12,  # Urbano/Rural
-        'C': 25,  # Centro Poblado
-        'D': 15,  # Zona Planilla
+        'C': 15,  # Tipo Zona
+        'D': 25,  # Nombre Lugar
         'E': 25,  # Nombre Responsable
         'F': 15,  # Teléfono
         'G': 20,  # Finca
-        'H': 15,  # Zona Resp
-        'I': 20,  # Nombre Zona
-        'J': 15,  # Lote Vacuna
-        'K': 15,  # Creado por Resp
-        'L': 18,  # Fecha Resp
-        'M': 20,  # Nombre Mascota
-        'N': 10,  # Tipo
-        'O': 10,  # Raza
-        'P': 15,  # Color
-        'Q': 18,  # Antecedente
-        'R': 12,  # Esterilizado
-        'S': 15,  # Latitud
-        'T': 15,  # Longitud
-        'U': 15,  # Creado por Mascota
-        'V': 18   # Fecha Mascota
+        'H': 15,  # Lote Vacuna
+        'I': 15,  # Creado por Resp
+        'J': 18,  # Fecha Resp
+        'K': 20,  # Nombre Mascota
+        'L': 10,  # Tipo
+        'M': 10,  # Raza
+        'N': 15,  # Color
+        'O': 18,  # Antecedente
+        'P': 12,  # Esterilizado
+        'Q': 15,  # Latitud
+        'R': 15,  # Longitud
+        'S': 15,  # Creado por Mascota
+        'T': 18   # Fecha Mascota
     }
 
     for col_letter, width in column_widths.items():
@@ -1448,7 +1442,7 @@ def exportar_planillas_completas_excel(request):
     ws.freeze_panes = 'A5'
 
     # Agregar filtros
-    ws.auto_filter.ref = f'A4:V{current_row - 1}'
+    ws.auto_filter.ref = f'A4:T{current_row - 1}'
 
     # Guardar en buffer
     buffer = BytesIO()
